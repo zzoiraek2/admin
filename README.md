@@ -1,18 +1,32 @@
 # Admin 설계정책서
 
-어드민 메뉴별 설계정책서를 `docs/menus/*.md` 파일 기준으로 관리하고, 웹 UI에서 탐색·검색·상태 변경까지 할 수 있는 로컬 관리 도구입니다.
+어드민 메뉴별 설계정책서를 `docs/menus/*.md` 파일 기준으로 관리하고, 웹 UI에서 탐색·검색할 수 있는 설계정책서 도구입니다. GitHub Pages에서는 읽기 전용으로 보고, 로컬 관리 서버에서는 상태 변경을 MD 파일에 저장합니다.
 
 ## 구성
 
 - `server.js`: 정적 파일 서빙, 메뉴 MD 파싱, 상태 저장 API
+- `scripts/build-menus-index.js`: GitHub Pages용 정적 메뉴 인덱스 생성
 - `index.html`: 화면 골격
 - `styles.css`: 어드민 정책서 UI 스타일
 - `app.js`: 메뉴 트리, 검색/필터, 상세 화면, 상태 변경 UI
 - `docs/menus/*.md`: 메뉴별 설계정책 원천 문서
+- `docs/menus-index.json`: GitHub Pages 읽기 전용 데이터
 - `docs/domains/*.md`: 도메인 단위 정책 문서
 - `vendor/lucide.min.js`: 아이콘 렌더링
 
-## 실행
+## 사용 방식
+
+### 보는 사람
+
+GitHub Pages에서 읽기 전용으로 확인합니다.
+
+```text
+https://zzoiraek2.github.io/admin/
+```
+
+이 모드에서는 `docs/menus-index.json`을 읽어서 표시하므로 별도 서버가 필요 없습니다. 상태 변경은 비활성화됩니다.
+
+### 수정하는 사람
 
 상태 저장 기능은 로컬 관리 서버가 필요합니다.
 
@@ -35,6 +49,12 @@ node server.js
 ```
 
 브라우저에서 `http://127.0.0.1:4173/` 또는 `http://localhost:4173/`을 엽니다.
+
+상태를 변경하면 해당 메뉴의 MD 파일이 수정됩니다. 변경 후 아래 명령으로 Pages용 정적 인덱스를 다시 생성하고 커밋/푸시합니다.
+
+```bash
+node scripts/build-menus-index.js
+```
 
 ## 상태 저장 방식
 

@@ -55,9 +55,11 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Admin policy server running at http://${host}:${port}/`);
-});
+if (require.main === module) {
+  server.listen(port, host, () => {
+    console.log(`Admin policy server running at http://${host}:${port}/`);
+  });
+}
 
 function listMenus() {
   return fs
@@ -91,6 +93,7 @@ function updateMenuStatus(code, status) {
   const text = fs.readFileSync(filePath, "utf8");
   const nextText = replaceStatusLine(text, status);
   fs.writeFileSync(filePath, nextText, "utf8");
+  writeMenusIndex();
   return parseMenuDoc(filePath);
 }
 
@@ -138,6 +141,11 @@ function getTopMenuOrder(topMenu) {
 function getCodeNumber(code) {
   const match = code.match(/-(\d{3})$/);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function writeMenusIndex() {
+  const outputPath = path.join(rootDir, "docs", "menus-index.json");
+  fs.writeFileSync(outputPath, `${JSON.stringify(listMenus(), null, 2)}\n`, "utf8");
 }
 
 function parseInfoSection(text) {
@@ -259,3 +267,10 @@ function badRequest(message) {
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+module.exports = {
+  listMenus,
+  parseMenuDoc,
+  updateMenuStatus,
+  writeMenusIndex
+};

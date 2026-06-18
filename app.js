@@ -3,7 +3,9 @@ const state = {
   filteredRows: [],
   activeId: null,
   query: "",
-  status: "all"
+  status: "all",
+  canEdit: false,
+  dataSource: "loading"
 };
 
 const specialPolicies = {
@@ -242,6 +244,7 @@ function cacheElements() {
   [
     "globalSearch",
     "searchCount",
+    "modeChip",
     "statusFilter",
     "navList",
     "overviewPanel",
@@ -293,12 +296,10 @@ function bindEvents() {
 
 async function loadMenuDocs() {
   try {
-    const response = await fetch("./api/menus", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`메뉴 MD 문서를 불러오지 못했습니다. (${response.status})`);
-    }
-    const docs = await response.json();
-    state.rows = normalizeMenuDocs(docs);
+    const result = await fetchMenuDocs();
+    state.rows = normalizeMenuDocs(result.docs);
+    state.canEdit = result.canEdit;
+    state.dataSource = result.source;
     state.filteredRows = state.rows;
     setupFilters();
     render();
@@ -311,6 +312,31 @@ async function loadMenuDocs() {
       </div>
     `;
   }
+}
+
+async function fetchMenuDocs() {
+  try {
+    const response = await fetch("./api/menus", { cache: "no-store" });
+    if (response.ok) {
+      return {
+        docs: await response.json(),
+        canEdit: true,
+        source: "api"
+      };
+    }
+  } catch (error) {
+    // GitHub Pages does not have the local write API. Fall back to the static index.
+  }
+
+  const fallbackResponse = await fetch("./docs/menus-index.json", { cache: "no-store" });
+  if (!fallbackResponse.ok) {
+    throw new Error(`메뉴 문서를 불러오지 못했습니다. (${fallbackResponse.status})`);
+  }
+  return {
+    docs: await fallbackResponse.json(),
+    canEdit: false,
+    source: "static"
+  };
 }
 
 function normalizeMenuDocs(records) {
@@ -508,6 +534,11 @@ function syncActiveRowWithSearch() {
 
 function renderSummary() {
   els.searchCount.textContent = state.filteredRows.length;
+  els.modeChip.textContent = state.canEdit ? "편집 가능" : "읽기 전용";
+  els.modeChip.className = `mode-chip ${state.canEdit ? "edit" : "readonly"}`;
+  els.modeChip.title = state.canEdit
+    ? "로컬 관리 서버가 실행 중입니다. 상태 변경이 MD 문서에 저장됩니다."
+    : "GitHub Pages 정적 보기 모드입니다. 상태 변경은 로컬 서버에서 가능합니다.";
 }
 
 function renderNavigation() {
@@ -716,6 +747,10 @@ function renderDetail() {
   els.detailDocLink.href = row.docPath;
   els.detailDocLink.title = `${row.code} Markdown policy document`;
   els.detailStatusSelect.value = row.status;
+  els.detailStatusSelect.disabled = !state.canEdit;
+  els.detailStatusSelect.title = state.canEdit
+    ? "상태 변경 시 해당 MD 문서에 저장됩니다."
+    : "GitHub Pages에서는 읽기 전용입니다. 상태 변경은 로컬 서버에서 가능합니다.";
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
@@ -973,6 +1008,11 @@ function getStatusClass(status) {
 async function updateActiveStatus() {
   const row = state.rows.find((item) => item.id === state.activeId);
   if (!row) return;
+  if (!state.canEdit) {
+    els.detailStatusSelect.value = row.status;
+    window.alert("GitHub Pages에서는 읽기 전용입니다. 상태 변경은 start-admin-server.cmd로 로컬 서버를 실행한 뒤 가능합니다.");
+    return;
+  }
 
   const nextStatus = els.detailStatusSelect.value;
   const previousStatus = row.status;

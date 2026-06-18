@@ -162,6 +162,32 @@ button svg {
   text-align: right;
 }
 
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.mode-chip.edit {
+  border-color: #99c7c2;
+  color: #064e3b;
+  background: #dff5ef;
+}
+
+.mode-chip.readonly {
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
 .status-filter {
   display: inline-flex;
   align-items: center;

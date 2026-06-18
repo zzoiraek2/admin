@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
+    "build:index": "node scripts/build-menus-index.js",
     "check": "node --check app.js && node --check server.js"
   }
 }
