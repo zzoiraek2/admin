@@ -1,36 +1,9 @@
-const statusStorageKey = "adminPolicyStatusOverrides";
-
 const state = {
   rows: [],
   filteredRows: [],
   activeId: null,
   query: "",
-  status: "all",
-  statusOverrides: readStatusOverrides()
-};
-
-
-const columns = {
-  top: "상단 주메뉴",
-  left1: "좌측1메뉴",
-  left2: "좌측2메뉴",
-  tabs: "우측화면 탭",
-  status: "상태",
-  purpose: "화면목적",
-  description: "설명",
-  legacy: "구 어드민 매핑"
-};
-
-const menuCodePrefixes = {
-  "대시보드": "ADM-DASH",
-  "회원·고객확인": "ADM-MEM",
-  "거래·마켓 관리": "ADM-MKT",
-  "입출금·지갑": "ADM-WAL",
-  "준법·FDS 관리": "ADM-RISK",
-  "거래지원·상품": "ADM-LIST",
-  "정산·회계": "ADM-SETTLE",
-  "고객지원·서비스": "ADM-CS",
-  "보안·관리자통제": "ADM-SEC"
+  status: "all"
 };
 
 const specialPolicies = {
@@ -262,7 +235,7 @@ const els = {};
 document.addEventListener("DOMContentLoaded", () => {
   cacheElements();
   bindEvents();
-  loadCsv();
+  loadMenuDocs();
 });
 
 function cacheElements() {
@@ -318,112 +291,42 @@ function bindEvents() {
   });
 }
 
-async function loadCsv() {
+async function loadMenuDocs() {
   try {
-    const response = await fetch("./admin.csv", { cache: "no-store" });
+    const response = await fetch("./api/menus", { cache: "no-store" });
     if (!response.ok) {
-      throw new Error(`admin.csv를 불러오지 못했습니다. (${response.status})`);
+      throw new Error(`메뉴 MD 문서를 불러오지 못했습니다. (${response.status})`);
     }
-    const text = await response.text();
-    const parsedRows = parseCsv(text);
-    state.rows = normalizeRows(parsedRows);
+    const docs = await response.json();
+    state.rows = normalizeMenuDocs(docs);
     state.filteredRows = state.rows;
     setupFilters();
     render();
   } catch (error) {
     document.querySelector(".content").innerHTML = `
       <div class="error-state">
-        <strong>CSV 로딩 실패</strong>
+        <strong>메뉴 문서 로딩 실패</strong>
         <p>${escapeHtml(error.message)}</p>
-        <p>로컬에서 확인할 때는 간단한 웹 서버로 열어주세요.</p>
+        <p>저장 기능을 사용하려면 <code>node server.js</code>로 로컬 관리 서버를 실행해 주세요.</p>
       </div>
     `;
   }
 }
 
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        cell += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      row.push(cell);
-      cell = "";
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") {
-        index += 1;
-      }
-      row.push(cell);
-      if (row.some((value) => value.trim() !== "")) {
-        rows.push(row);
-      }
-      row = [];
-      cell = "";
-      continue;
-    }
-
-    cell += char;
-  }
-
-  if (cell.length || row.length) {
-    row.push(cell);
-    if (row.some((value) => value.trim() !== "")) {
-      rows.push(row);
-    }
-  }
-
-  const headers = rows.shift().map((header) => header.replace(/^\uFEFF/, "").trim());
-  return rows.map((values) =>
-    headers.reduce((record, header, index) => {
-      record[header] = (values[index] || "").trim();
-      return record;
-    }, {})
-  );
-}
-
-function normalizeRows(records) {
-  let currentTop = "";
-  let currentLeft1 = "";
-  let currentLeft2 = "";
-  const sequenceByPrefix = {};
-
+function normalizeMenuDocs(records) {
   return records.map((record, index) => {
-    if (record[columns.top]) currentTop = record[columns.top];
-    if (record[columns.left1]) currentLeft1 = record[columns.left1];
-    if (record[columns.left2]) currentLeft2 = record[columns.left2];
-
-    const rawTitle = record[columns.left2] || record[columns.left1] || record[columns.top] || currentLeft2 || currentLeft1 || currentTop;
-    const title = cleanReadyText(rawTitle);
-    const baseStatus = record[columns.status] === "준비중" || rawTitle.includes("준비중") ? "준비중" : "정의됨";
-    const tabs = splitList(record[columns.tabs], "/");
-    const descriptionItems = splitList(record[columns.description], ",");
-    const prefix = getMenuCodePrefix(currentTop);
-    const code = getNextMenuCode(prefix, sequenceByPrefix);
-    const status = state.statusOverrides[code] || baseStatus;
+    const code = record.code || `ADM-GEN-${String(index + 1).padStart(3, "0")}`;
+    const title = record.title || "이름 미정";
+    const tabs = Array.isArray(record.tabs) ? record.tabs : splitList(record.tabs, "/");
+    const description = record.description || "";
+    const descriptionItems = splitList(description, ",");
+    const status = record.status || "정의됨";
     const suggestion = buildSuggestion({
       title,
-      top: currentTop,
-      left1: currentLeft1,
-      purpose: record[columns.purpose],
-      description: record[columns.description],
+      top: record.top,
+      left1: record.left1,
+      purpose: record.purpose,
+      description,
       status,
       tabs
     });
@@ -431,19 +334,19 @@ function normalizeRows(records) {
     const normalized = {
       id: `menu-${index + 1}`,
       number: index + 1,
-      top: currentTop || "미분류",
-      left1: currentLeft1 || "미분류",
+      top: record.top || "미분류",
+      left1: record.left1 || "미분류",
       left2: title || "이름 미정",
       title: title || "이름 미정",
       code,
       tabs,
       status,
-      purpose: record[columns.purpose] || "화면 목적 정의 필요",
-      description: record[columns.description] || "",
+      purpose: record.purpose || "화면 목적 정의 필요",
+      description,
       descriptionItems,
-      legacy: record[columns.legacy] || "신규 정책 정의",
+      legacy: record.legacy || "신규 정책 정의",
       suggestion,
-      docPath: `./docs/menus/${code}.md`,
+      docPath: record.docPath || `./docs/menus/${code}.md`,
       specialPolicy: specialPolicies[code] || null
     };
 
@@ -452,18 +355,6 @@ function normalizeRows(records) {
 
     return normalized;
   });
-}
-
-function getMenuCodePrefix(topMenu) {
-  return menuCodePrefixes[topMenu] || "ADM-GEN";
-}
-
-function getNextMenuCode(prefix, sequenceByPrefix) {
-  sequenceByPrefix[prefix] = (sequenceByPrefix[prefix] || 0) + 1;
-  if (prefix === "ADM-RISK" && sequenceByPrefix[prefix] === 18) {
-    sequenceByPrefix[prefix] += 1;
-  }
-  return `${prefix}-${String(sequenceByPrefix[prefix]).padStart(3, "0")}`;
 }
 
 function buildDevelopmentDirective(row) {
@@ -674,7 +565,7 @@ function renderOverview() {
   const withTabs = state.rows.filter((row) => row.tabs.length > 0).length;
 
   els.metricGrid.innerHTML = [
-    ["전체 메뉴", total, "CSV에 정의된 화면 단위"],
+    ["전체 메뉴", total, "MD 문서로 정의된 화면 단위"],
     ["제작 필요", ready, "상태가 준비중인 메뉴"],
     ["구 어드민 매핑", withLegacy, "이전 화면 추적 가능"],
     ["탭 정의", withTabs, "우측 화면 탭이 있는 메뉴"]
@@ -1079,15 +970,35 @@ function getStatusClass(status) {
   return "defined";
 }
 
-function updateActiveStatus() {
+async function updateActiveStatus() {
   const row = state.rows.find((item) => item.id === state.activeId);
   if (!row) return;
 
-  state.statusOverrides[row.code] = els.detailStatusSelect.value;
-  writeStatusOverrides(state.statusOverrides);
-  row.status = els.detailStatusSelect.value;
-  row.searchText = buildRowSearchText(row);
-  render();
+  const nextStatus = els.detailStatusSelect.value;
+  const previousStatus = row.status;
+  els.detailStatusSelect.disabled = true;
+
+  try {
+    const response = await fetch(`./api/menus/${encodeURIComponent(row.code)}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus })
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `상태 저장에 실패했습니다. (${response.status})`);
+    }
+
+    row.status = nextStatus;
+    row.searchText = buildRowSearchText(row);
+    render();
+  } catch (error) {
+    row.status = previousStatus;
+    els.detailStatusSelect.value = previousStatus;
+    window.alert(error.message);
+  } finally {
+    els.detailStatusSelect.disabled = false;
+  }
 }
 
 function scrollDetailIntoView() {
@@ -1097,22 +1008,6 @@ function scrollDetailIntoView() {
     top: Math.max(panelTop - topbarHeight - 14, 0),
     behavior: "smooth"
   });
-}
-
-function readStatusOverrides() {
-  try {
-    return JSON.parse(localStorage.getItem(statusStorageKey) || "{}");
-  } catch (error) {
-    return {};
-  }
-}
-
-function writeStatusOverrides(overrides) {
-  try {
-    localStorage.setItem(statusStorageKey, JSON.stringify(overrides));
-  } catch (error) {
-    // Ignore storage failures in private or restricted browser contexts.
-  }
 }
 
 function buildSuggestion(context) {
