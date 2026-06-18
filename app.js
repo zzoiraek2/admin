@@ -1,9 +1,12 @@
+const statusStorageKey = "adminPolicyStatusOverrides";
+
 const state = {
   rows: [],
   filteredRows: [],
   activeId: null,
   query: "",
-  status: "all"
+  status: "all",
+  statusOverrides: readStatusOverrides()
 };
 
 
@@ -267,7 +270,6 @@ function cacheElements() {
     "globalSearch",
     "searchCount",
     "statusFilter",
-    "sidebarSummary",
     "navList",
     "overviewPanel",
     "metricGrid",
@@ -280,7 +282,7 @@ function cacheElements() {
     "detailCode",
     "detailDirective",
     "detailDocLink",
-    "copyDirective",
+    "detailStatusSelect",
     "detailPurpose",
     "detailLegacy",
     "detailDescription",
@@ -306,7 +308,7 @@ function bindEvents() {
   });
 
   els.backToOverview.addEventListener("click", showOverview);
-  els.copyDirective.addEventListener("click", copyActiveDirective);
+  els.detailStatusSelect.addEventListener("change", updateActiveStatus);
   els.showAllButton.addEventListener("click", () => {
     state.query = "";
     state.status = "all";
@@ -415,7 +417,7 @@ function normalizeRows(records) {
     const descriptionItems = splitList(record[columns.description], ",");
     const prefix = getMenuCodePrefix(currentTop);
     const code = getNextMenuCode(prefix, sequenceByPrefix);
-    const status = baseStatus;
+    const status = state.statusOverrides[code] || baseStatus;
     const suggestion = buildSuggestion({
       title,
       top: currentTop,
@@ -614,29 +616,6 @@ function syncActiveRowWithSearch() {
 }
 
 function renderSummary() {
-  const total = state.rows.length;
-  const ready = state.rows.filter((row) => row.status === "준비중").length;
-  const review = state.rows.filter((row) => row.status === "검토중").length;
-  const defined = state.rows.filter((row) => row.status === "정의됨").length;
-  const topCount = new Set(state.rows.map((row) => row.top)).size;
-
-  els.sidebarSummary.innerHTML = [
-    ["전체", total],
-    ["준비중", ready],
-    ["검토중", review],
-    ["정의됨", defined],
-    ["상단 메뉴", topCount]
-  ]
-    .map(
-      ([label, value]) => `
-        <div class="summary-tile">
-          <strong>${value}</strong>
-          <span>${label}</span>
-        </div>
-      `
-    )
-    .join("");
-
   els.searchCount.textContent = state.filteredRows.length;
 }
 
@@ -845,6 +824,7 @@ function renderDetail() {
   els.detailDirective.innerHTML = highlight(row.directive);
   els.detailDocLink.href = row.docPath;
   els.detailDocLink.title = `${row.code} Markdown policy document`;
+  els.detailStatusSelect.value = row.status;
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
@@ -1081,7 +1061,7 @@ function renderLedgerTab(tab) {
 function selectRow(id) {
   state.activeId = id;
   render();
-  els.detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  scrollDetailIntoView();
 }
 
 function showOverview() {
@@ -1099,22 +1079,40 @@ function getStatusClass(status) {
   return "defined";
 }
 
-async function copyActiveDirective() {
+function updateActiveStatus() {
   const row = state.rows.find((item) => item.id === state.activeId);
   if (!row) return;
 
-  const original = els.copyDirective.innerHTML;
+  state.statusOverrides[row.code] = els.detailStatusSelect.value;
+  writeStatusOverrides(state.statusOverrides);
+  row.status = els.detailStatusSelect.value;
+  row.searchText = buildRowSearchText(row);
+  render();
+}
+
+function scrollDetailIntoView() {
+  const topbarHeight = document.querySelector(".topbar")?.offsetHeight || 0;
+  const panelTop = els.detailPanel.getBoundingClientRect().top + window.scrollY;
+  window.scrollTo({
+    top: Math.max(panelTop - topbarHeight - 14, 0),
+    behavior: "smooth"
+  });
+}
+
+function readStatusOverrides() {
   try {
-    await navigator.clipboard.writeText(row.directive);
-    els.copyDirective.innerHTML = '<i data-lucide="check"></i>복사됨';
+    return JSON.parse(localStorage.getItem(statusStorageKey) || "{}");
   } catch (error) {
-    els.copyDirective.innerHTML = '<i data-lucide="alert-circle"></i>복사 실패';
+    return {};
   }
-  refreshIcons();
-  window.setTimeout(() => {
-    els.copyDirective.innerHTML = original;
-    refreshIcons();
-  }, 1400);
+}
+
+function writeStatusOverrides(overrides) {
+  try {
+    localStorage.setItem(statusStorageKey, JSON.stringify(overrides));
+  } catch (error) {
+    // Ignore storage failures in private or restricted browser contexts.
+  }
 }
 
 function buildSuggestion(context) {
