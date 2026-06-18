@@ -54,6 +54,9 @@ const specialPolicies = {
       { area: "등록 대상", policy: "회원번호 기반 고객 대상자를 필수로 지정한다. 지갑주소나 거래만 있는 경우에도 연결 회원을 확인하거나 미확인 상태로 별도 Case를 만든다." },
       { area: "자동 등록", policy: "FDS시스템 차단, KYT Alert, 제재국가 IP, 트래블룰 미준수, KYC 미흡, 미신고 VASP 등은 자동 등록 후보로 수집하고 승인 정책에 따라 적용한다." },
       { area: "수동 등록", policy: "운영자 수동 등록은 차단 사유, 증빙, 대상 범위, 요청 부서, 만료 예정일을 필수로 입력한다." },
+      { area: "블랙리스트 지갑", policy: "블랙리스트 지갑주소 등록은 주소, 네트워크, 위험 출처, 관련 Case, 적용 범위(입고/출고)를 기록하고 승인 후 입출고 차단 정책과 연동한다." },
+      { area: "기관 요청", policy: "법원 동결, 행정기관 보전처분, 수사기관 협조 요청은 요청기관, 문서번호, 요청일, 대상 회원/계좌/주소, 차단 범위, 해제 조건을 필수로 기록한다." },
+      { area: "사건 기록형", policy: "정기점검, 전산장애, 메인넷 업그레이드, 하드포크, 토큰스왑 같은 사건은 등록만으로 고객 차단을 발생시키지 않는다. 사건 발생일과 보고 기준만 관리대장 집계에 반영한다." },
       { area: "결재/승인", policy: "등록 요청, 긴급 등록, 대량 등록, 차단 범위 확대는 승인 프로세스를 태운다. 승인 전후 값과 반려 사유를 보관한다." },
       { area: "감사로그", policy: "누가 어떤 대상자를 어떤 사유로 어떤 범위까지 차단했는지 전후 상태와 함께 변경 불가능한 로그로 남긴다." }
     ]
@@ -131,6 +134,51 @@ const specialPolicies = {
       { no: "11", virtualReason: "요주의인물", virtualCount: "이용자수", fiatReason: "요주의인물", fiatCount: "이용자수" },
       { no: "12", virtualReason: "24시간 출금지연제 및 72시간 출금지연제 등 전자통신금융사기 예방(출고차단)", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
       { no: "13", virtualReason: "범죄행위 예방을 위한 수사기관(검찰, 경찰) 등 요청", virtualCount: "이용자수", fiatReason: "범죄행위 예방을 위한 수사기관(검찰, 경찰) 등 요청", fiatCount: "이용자수" }
+    ]
+  },
+  "ADM-RISK-004": {
+    type: "ledger",
+    title: "차단 관리대장 집계 정책",
+    summary:
+      "차단 관리대장은 차단 등록, 해제, 자동 차단 로그, 사건 기록형 등록을 원천으로 일별·월별 집계를 생성하고 사유코드별 산출 기준에 따라 숫자, 날짜, 전체, 종목수, 금액을 다르게 표시하는 보고/모니터링 화면이다.",
+    principles: [
+      "ADM-RISK-001의 차단 등록과 자동 차단 로그를 원천으로 삼되, 정기점검·전산장애 같은 사건 기록형 등록은 차단 행위가 아니라 사건 발생일 기준으로 집계한다.",
+      "ADM-RISK-003의 건 수 산출 기준에 따라 이용자수, 가상자산종목수, 사건발생일, 전체, 금액 표시 방식을 결정한다.",
+      "일별 집계는 차단일자 0시 기준 스냅샷과 발생 로그 누적을 함께 관리하고, 월별 집계는 일별 집계를 사유코드별로 합산 또는 목록화한다.",
+      "최초 보고일자, 최초보고 문서번호, 차단사유 근거는 집계 행과 연결해 감사와 대외 보고 근거로 사용한다.",
+      "수동 보정은 허용하되 보정 사유, 보정 전후 값, 승인자, 증빙을 남기고 원천 로그와 구분한다."
+    ],
+    sourceTypes: [
+      { type: "자동 차단 로그", source: "FDS, KYT, KYC 미흡, 트래블룰, 제재국가, 고위험 지갑", ledgerRule: "발생 시점마다 회원, 사유코드, 차단 방향, 금액, Case ID를 기록하고 일별 집계에 반영한다." },
+      { type: "수동 차단 등록", source: "운영자 차단 등록, 블랙리스트 지갑주소, 법원 동결, 수사기관 협조, 행정기관 요청", ledgerRule: "승인 완료 후 적용된 차단 상태를 원천으로 기록하고 대장 집계에 반영한다." },
+      { type: "사건 기록형 등록", source: "정기점검, 전산장애, 메인넷 업그레이드, 하드포크, 토큰스왑, 유의종목·거래지원 종료", ledgerRule: "등록만으로 고객 차단을 만들지 않고 사건발생일, 대상 자산, 전체 여부를 보고값으로 관리한다." },
+      { type: "수동 보정/보고 등록", source: "최초 보고 공문, 문서번호, 이전 집계 보정, 누락 데이터 보완", ledgerRule: "원천 로그와 별도 보정 행으로 관리하고 승인 후 일별·월별 집계에 반영한다." }
+    ],
+    aggregationRules: [
+      { basis: "이용자수", display: "숫자 합계", example: "사유 11 KYC 미흡 회원 입출고 차단 122명", rule: "회원 기준 중복 제거 후 입금/출금/입고/출고 방향별 이용자수를 산출한다." },
+      { basis: "가상자산종목수", display: "종목 수 또는 종목 목록", example: "BTC, ETH 2종 또는 전체", rule: "대상 자산 기준으로 산출하고 전체 자산 대상이면 전체로 표시한다." },
+      { basis: "사건발생일", display: "날짜 목록 또는 발생일 수", example: "2026-06-18, 2026-06-21", rule: "해당 월에 2건이면 날짜 2개를 표시하고 필요 시 발생일 수로 집계한다." },
+      { basis: "전체", display: "전체", example: "거래지원 종료로 전체 고객 입고차단", rule: "개별 이용자 로그가 없더라도 전체 대상 차단으로 표시하고 근거 사건을 연결한다." },
+      { basis: "금액", display: "금액 합계", example: "2605월(5,495,691원)", rule: "출고 차단 대상 가상자산 금액과 출금 차단 대상 예치금 금액을 별도 합산한다." }
+    ],
+    views: [
+      { name: "원천 로그", policy: "차단일자, 사유코드, 대상 유형, 회원/주소/자산/서비스, 차단 방향, 금액, 자동/수동 구분, Case ID를 조회한다." },
+      { name: "일별 집계", policy: "차단일자와 사유코드 기준으로 가상자산 입고/출고/입출고, 예치금 입금/출금/입출금 차단 값을 산출한다." },
+      { name: "월별 집계", policy: "일별 집계를 월 단위로 묶고 산출 기준에 따라 숫자는 합계, 날짜는 목록, 전체는 전체, 종목은 종목수로 표시한다." },
+      { name: "보고 공문", policy: "최초 보고일자, 최초보고 문서번호, 차단사유 근거를 집계 행에 연결한다." },
+      { name: "수동 등록/보정", policy: "유의종목 지정, 점검, 서비스 중지, 법정 요청 등 로그로 자동 산출되지 않는 대장 행을 승인 기반으로 등록한다." }
+    ],
+    reportColumns: [
+      "차단사유",
+      "건수/보고값",
+      "가상자산 종목수: 입고만·출고만·입출고 모두 차단",
+      "가상자산 입출고 차단 이용자수: 입고차단·출고차단·입출고 모두 차단",
+      "가상자산 출고 차단 대상 금액",
+      "예치금 차단 이용자수: 입금만·출금만·입출금 모두 차단",
+      "출금 차단 대상 예치금 금액",
+      "최초 보고일자",
+      "최초보고 문서번호",
+      "차단사유 근거"
     ]
   }
 };
@@ -380,7 +428,23 @@ function getSpecialPolicySearchParts(policy) {
     ...(policy.requirements || []).flatMap((item) => [
       item.area,
       item.policy
-    ])
+    ]),
+    ...(policy.sourceTypes || []).flatMap((item) => [
+      item.type,
+      item.source,
+      item.ledgerRule
+    ]),
+    ...(policy.aggregationRules || []).flatMap((item) => [
+      item.basis,
+      item.display,
+      item.example,
+      item.rule
+    ]),
+    ...(policy.views || []).flatMap((item) => [
+      item.name,
+      item.policy
+    ]),
+    ...(policy.reportColumns || [])
   ];
   return parts.filter(Boolean);
 }
@@ -753,6 +817,74 @@ function renderSpecialPolicyBody(policy) {
               .join("")}
           </tbody>
         </table>
+      </div>
+    `;
+  }
+
+  if (policy.type === "ledger") {
+    return `
+      <div class="ledger-section">
+        <h4>원천 데이터 유형</h4>
+        <div class="ledger-grid">
+          ${policy.sourceTypes
+            .map(
+              (item) => `
+                <article class="ledger-card">
+                  <h5>${highlight(item.type)}</h5>
+                  <p class="ledger-source">${highlight(item.source)}</p>
+                  <p>${highlight(item.ledgerRule)}</p>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      </div>
+      <div class="table-wrap requirement-table-wrap">
+        <table class="requirement-table">
+          <thead>
+            <tr>
+              <th>산출 기준</th>
+              <th>표시 방식</th>
+              <th>예시</th>
+              <th>집계 규칙</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${policy.aggregationRules
+              .map(
+                (item) => `
+                  <tr>
+                    <td>${highlight(item.basis)}</td>
+                    <td>${highlight(item.display)}</td>
+                    <td>${highlight(item.example)}</td>
+                    <td>${highlight(item.rule)}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="ledger-section">
+        <h4>화면 탭/조회 기준</h4>
+        <div class="ledger-grid">
+          ${policy.views
+            .map(
+              (item) => `
+                <article class="ledger-card compact">
+                  <h5>${highlight(item.name)}</h5>
+                  <p>${highlight(item.policy)}</p>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      </div>
+      <div class="ledger-section">
+        <h4>집계표 필수 컬럼</h4>
+        <div class="token-list">
+          ${policy.reportColumns.map((item) => `<span class="token">${highlight(item)}</span>`).join("")}
+        </div>
       </div>
     `;
   }
