@@ -1,10 +1,14 @@
+const statusStorageKey = "adminPolicyStatusOverrides";
+
 const state = {
   rows: [],
   filteredRows: [],
   activeId: null,
   query: "",
-  status: "all"
+  status: "all",
+  statusOverrides: readStatusOverrides()
 };
+
 
 const columns = {
   top: "상단 주메뉴",
@@ -30,6 +34,27 @@ const menuCodePrefixes = {
 };
 
 const specialPolicies = {
+  "ADM-RISK-013": {
+    type: "fieldList",
+    title: "KYT VASP 차단 관리 기준",
+    summary:
+      "KYT VASP 차단 관리는 Chainalysis 등 KYT 기준에서 차단 또는 주의 대상으로 관리할 VASP, 거래소, OTC 채널 식별 정보를 관리하는 기준정보 화면이다. 입력 항목은 VASP 식별과 차단목록 판단에 필요한 최소 컬럼으로 제한한다.",
+    principles: [
+      "미신고 VASP 관리는 별도 메뉴로 두지 않고 KYT VASP 차단 관리에서 통합 관리한다.",
+      "이 화면은 입출금 차단 행위를 직접 생성하는 화면이 아니라 KYT 판단과 차단 정책에서 참조할 VASP 식별 목록을 관리한다.",
+      "VASP명, Cluster Name, Site, Status, 내부 비고를 기준으로 동일 VASP의 alias와 사이트 기반 식별 정보를 추적한다.",
+      "Cluster Name이 확인되지 않은 경우에도 Site와 내부 비고를 기준으로 관리할 수 있어야 한다.",
+      "등록 데이터는 KYT Alert, 입출금 VASP 검증, 차단 등록 정책에서 참조될 수 있어야 한다."
+    ],
+    fields: [
+      { name: "No", policy: "목록 표시 순번 또는 관리 순번" },
+      { name: "VASP명", policy: "내부에서 식별하는 VASP, 거래소, OTC 채널, 서비스명" },
+      { name: "Cluster Name", policy: "Chainalysis 등 외부 분석도구에서 식별되는 클러스터명 또는 alias" },
+      { name: "Site", policy: "공식 사이트, 도메인, 텔레그램 채널 등 식별 URL" },
+      { name: "Status", policy: "exchange 등 VASP 또는 채널 분류 상태" },
+      { name: "내부 비고", policy: "클러스터 미확인, 사이트 기반 관리, alias 필요 등 내부 운영 메모" }
+    ]
+  },
   "ADM-RISK-001": {
     type: "approvalFlow",
     title: "차단 등록 정책",
@@ -255,6 +280,7 @@ function cacheElements() {
     "detailBreadcrumb",
     "detailTitle",
     "detailStatus",
+    "detailStatusSelect",
     "detailCode",
     "detailDirective",
     "copyDirective",
@@ -284,6 +310,7 @@ function bindEvents() {
 
   els.backToOverview.addEventListener("click", showOverview);
   els.copyDirective.addEventListener("click", copyActiveDirective);
+  els.detailStatusSelect.addEventListener("change", updateActiveStatus);
   els.showAllButton.addEventListener("click", () => {
     state.query = "";
     state.status = "all";
@@ -387,12 +414,12 @@ function normalizeRows(records) {
 
     const rawTitle = record[columns.left2] || record[columns.left1] || record[columns.top] || currentLeft2 || currentLeft1 || currentTop;
     const title = cleanReadyText(rawTitle);
-    const status = record[columns.status] === "준비중" || rawTitle.includes("준비중") ? "준비중" : "정의됨";
+    const baseStatus = record[columns.status] === "준비중" || rawTitle.includes("준비중") ? "준비중" : "정의됨";
     const tabs = splitList(record[columns.tabs], "/");
     const descriptionItems = splitList(record[columns.description], ",");
     const prefix = getMenuCodePrefix(currentTop);
-    sequenceByPrefix[prefix] = (sequenceByPrefix[prefix] || 0) + 1;
-    const code = `${prefix}-${String(sequenceByPrefix[prefix]).padStart(3, "0")}`;
+    const code = getNextMenuCode(prefix, sequenceByPrefix);
+    const status = state.statusOverrides[code] || baseStatus;
     const suggestion = buildSuggestion({
       title,
       top: currentTop,
@@ -422,26 +449,7 @@ function normalizeRows(records) {
     };
 
     normalized.directive = buildDevelopmentDirective(normalized);
-    normalized.searchText = normalizeSearchText([
-      normalized.code,
-      normalized.top,
-      normalized.left1,
-      normalized.left2,
-      normalized.purpose,
-      normalized.description,
-      normalized.legacy,
-      normalized.directive,
-      normalized.status,
-      ...normalized.tabs,
-      ...buildDesignOpinionItems(normalized).flat(),
-      ...buildChecklistItems(normalized).flat(),
-      ...getSpecialPolicySearchParts(normalized.specialPolicy)
-    ]
-      .join(" "))
-      .concat(" ", normalizeSearchText([normalized.code, normalized.title].join("")))
-      .concat(" ", normalizeSearchText([normalized.top, normalized.left1, normalized.title].join("")))
-      .concat(" ", normalizeSearchText(normalized.description))
-      .concat(" ", normalizeSearchText(normalized.purpose));
+    normalized.searchText = buildRowSearchText(normalized);
 
     return normalized;
   });
@@ -451,8 +459,39 @@ function getMenuCodePrefix(topMenu) {
   return menuCodePrefixes[topMenu] || "ADM-GEN";
 }
 
+function getNextMenuCode(prefix, sequenceByPrefix) {
+  sequenceByPrefix[prefix] = (sequenceByPrefix[prefix] || 0) + 1;
+  if (prefix === "ADM-RISK" && sequenceByPrefix[prefix] === 18) {
+    sequenceByPrefix[prefix] += 1;
+  }
+  return `${prefix}-${String(sequenceByPrefix[prefix]).padStart(3, "0")}`;
+}
+
 function buildDevelopmentDirective(row) {
   return `${row.code} ${row.title} 화면은 이 설계정책서의 화면 목적, 탭 구성, 설계 방식 제안, 권한/감사 기준을 기준으로 개발합니다. 구현 중 설계와 달라지는 항목은 변경 사유와 대체 정책을 기록합니다.`;
+}
+
+function buildRowSearchText(row) {
+  return normalizeSearchText([
+    row.code,
+    row.top,
+    row.left1,
+    row.left2,
+    row.purpose,
+    row.description,
+    row.legacy,
+    row.directive,
+    row.status,
+    ...row.tabs,
+    ...buildDesignOpinionItems(row).flat(),
+    ...buildChecklistItems(row).flat(),
+    ...getSpecialPolicySearchParts(row.specialPolicy)
+  ]
+    .join(" "))
+    .concat(" ", normalizeSearchText([row.code, row.title].join("")))
+    .concat(" ", normalizeSearchText([row.top, row.left1, row.title].join("")))
+    .concat(" ", normalizeSearchText(row.description))
+    .concat(" ", normalizeSearchText(row.purpose));
 }
 
 function getSpecialPolicySearchParts(policy) {
@@ -500,6 +539,10 @@ function getSpecialPolicySearchParts(policy) {
       ...(item.columns || []),
       ...(item.policies || [])
     ]),
+    ...(policy.fields || []).flatMap((item) => [
+      item.name,
+      item.policy
+    ]),
     ...(policy.reportColumns || [])
   ];
   return parts.filter(Boolean);
@@ -521,6 +564,7 @@ function setupFilters() {
   const filters = [
     ["all", "전체"],
     ["준비중", "준비중"],
+    ["검토중", "검토중"],
     ["정의됨", "정의됨"]
   ];
 
@@ -574,12 +618,14 @@ function syncActiveRowWithSearch() {
 function renderSummary() {
   const total = state.rows.length;
   const ready = state.rows.filter((row) => row.status === "준비중").length;
-  const defined = total - ready;
+  const review = state.rows.filter((row) => row.status === "검토중").length;
+  const defined = state.rows.filter((row) => row.status === "정의됨").length;
   const topCount = new Set(state.rows.map((row) => row.top)).size;
 
   els.sidebarSummary.innerHTML = [
     ["전체", total],
     ["준비중", ready],
+    ["검토중", review],
     ["정의됨", defined],
     ["상단 메뉴", topCount]
   ]
@@ -626,7 +672,7 @@ function renderNavigation() {
                           <span class="nav-title">${highlight(row.title)}</span>
                           <span class="nav-code">${highlight(row.code)}</span>
                         </span>
-                        <span class="status-chip ${row.status === "준비중" ? "ready" : "defined"}">${row.status}</span>
+                        <span class="status-chip ${getStatusClass(row.status)}">${row.status}</span>
                       </button>
                     `
                   )
@@ -703,7 +749,9 @@ function renderPriorityList() {
 function renderTopMenuTable() {
   const rows = Object.entries(groupBy(state.rows, "top")).map(([top, items]) => {
     const ready = items.filter((item) => item.status === "준비중").length;
-    return [top, items.length, ready, `${Math.round(((items.length - ready) / items.length) * 100)}%`];
+    const review = items.filter((item) => item.status === "검토중").length;
+    const defined = items.filter((item) => item.status === "정의됨").length;
+    return [top, items.length, ready, review, `${Math.round((defined / items.length) * 100)}%`];
   });
 
   els.topMenuTable.innerHTML = `
@@ -713,17 +761,19 @@ function renderTopMenuTable() {
           <th>상단 메뉴</th>
           <th>전체</th>
           <th>준비중</th>
+          <th>검토중</th>
           <th>정의율</th>
         </tr>
       </thead>
       <tbody>
         ${rows
           .map(
-            ([top, total, ready, rate]) => `
+            ([top, total, ready, review, rate]) => `
               <tr>
                 <td>${escapeHtml(top)}</td>
                 <td>${total}</td>
                 <td>${ready}</td>
+                <td>${review}</td>
                 <td>${rate}</td>
               </tr>
             `
@@ -749,7 +799,7 @@ function renderMenuGrid() {
         <article class="menu-card" role="button" tabindex="0" data-id="${row.id}">
           <div class="menu-card-header">
             <h3>${highlight(row.title)}</h3>
-            <span class="status-chip ${row.status === "준비중" ? "ready" : "defined"}">${row.status}</span>
+            <span class="status-chip ${getStatusClass(row.status)}">${row.status}</span>
           </div>
           <div class="menu-code-row">
             <span class="code-chip">${highlight(row.code)}</span>
@@ -792,7 +842,8 @@ function renderDetail() {
   els.detailBreadcrumb.innerHTML = `${highlight(row.top)} / ${highlight(row.left1)}`;
   els.detailTitle.innerHTML = highlight(row.title);
   els.detailStatus.textContent = row.status;
-  els.detailStatus.className = `status-chip ${row.status === "준비중" ? "ready" : "defined"}`;
+  els.detailStatus.className = `status-chip ${getStatusClass(row.status)}`;
+  els.detailStatusSelect.value = row.status;
   els.detailCode.innerHTML = highlight(row.code);
   els.detailDirective.innerHTML = highlight(row.directive);
   els.detailPurpose.innerHTML = highlight(row.purpose);
@@ -927,6 +978,33 @@ function renderSpecialPolicyBody(policy) {
     `;
   }
 
+  if (policy.type === "fieldList") {
+    return `
+      <div class="table-wrap requirement-table-wrap">
+        <table class="requirement-table">
+          <thead>
+            <tr>
+              <th>입력 항목</th>
+              <th>관리 기준</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${policy.fields
+              .map(
+                (item) => `
+                  <tr>
+                    <td>${highlight(item.name)}</td>
+                    <td>${highlight(item.policy)}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   return `
     <div class="table-wrap special-table-wrap">
       <table class="special-policy-table">
@@ -1014,6 +1092,39 @@ function showOverview() {
   renderNavigation();
   refreshIcons();
   els.overviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function updateActiveStatus() {
+  const row = state.rows.find((item) => item.id === state.activeId);
+  if (!row) return;
+
+  state.statusOverrides[row.code] = els.detailStatusSelect.value;
+  writeStatusOverrides(state.statusOverrides);
+  row.status = els.detailStatusSelect.value;
+  row.searchText = buildRowSearchText(row);
+  render();
+}
+
+function getStatusClass(status) {
+  if (status === "준비중") return "ready";
+  if (status === "검토중") return "review";
+  return "defined";
+}
+
+function readStatusOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(statusStorageKey) || "{}");
+  } catch (error) {
+    return {};
+  }
+}
+
+function writeStatusOverrides(overrides) {
+  try {
+    localStorage.setItem(statusStorageKey, JSON.stringify(overrides));
+  } catch (error) {
+    // Ignore storage failures in private or restricted browser contexts.
+  }
 }
 
 async function copyActiveDirective() {

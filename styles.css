@@ -360,6 +360,17 @@ button svg {
   background: #d1fae5;
 }
 
+.status-chip.review {
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
+.filter-button[data-status="검토중"].is-active {
+  border-color: #fecaca;
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
 .code-chip,
 #detailCode {
   display: inline-flex;
@@ -558,7 +569,7 @@ tr:last-child td {
 
 .reference-block {
   display: grid;
-  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 14px;
   margin-bottom: 12px;
@@ -566,6 +577,28 @@ tr:last-child td {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f8fbfb;
+}
+
+.status-edit {
+  display: inline-grid;
+  gap: 4px;
+  min-width: 116px;
+}
+
+.status-edit span {
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-edit select {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
 }
 
 .reference-block p:not(.block-label) {
