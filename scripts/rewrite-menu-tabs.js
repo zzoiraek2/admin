@@ -32,6 +32,9 @@ function tabsFor(menu) {
   if (menu.code === "ADM-RISK-013") {
     return ["VASP 요약", "식별정보 관리", "검증·위험상태", "차단목록 반영", "승인·변경 이력"];
   }
+  if (menu.code === "ADM-WAL-013") {
+    return ["지갑 요약", "잔고·상태 모니터링", "웜월렛·지갑 세팅"];
+  }
 
   if (menu.top === "대시보드") {
     if (hasAny(text, ["승인", "처리 대기", "완료 이력"])) return ["처리 대기 요약", "업무별 상세", "승인·반려", "처리 이력"];
