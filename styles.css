@@ -691,6 +691,65 @@ tr:last-child td {
   color: var(--brand);
 }
 
+.workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.workflow-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+}
+
+.workflow-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #064e3b;
+  background: #d1fae5;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.workflow-card h4 {
+  margin: 2px 0 4px;
+  font-size: 14px;
+}
+
+.workflow-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.workflow-owner {
+  margin-bottom: 7px !important;
+  color: var(--brand-strong) !important;
+  font-weight: 900;
+}
+
+.requirement-table-wrap {
+  margin-top: 12px;
+}
+
+.requirement-table th:first-child,
+.requirement-table td:first-child {
+  width: 180px;
+  color: var(--brand-strong);
+  font-weight: 900;
+}
+
 .special-table-wrap {
   max-height: 620px;
 }
@@ -840,7 +899,8 @@ mark {
   .menu-grid,
   .policy-grid,
   .checklist-grid,
-  .special-principles {
+  .special-principles,
+  .workflow-grid {
     grid-template-columns: 1fr;
   }
 

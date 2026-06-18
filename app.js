@@ -30,7 +30,64 @@ const menuCodePrefixes = {
 };
 
 const specialPolicies = {
+  "ADM-RISK-001": {
+    type: "approvalFlow",
+    title: "차단 등록 정책",
+    summary:
+      "차단 등록은 고객 대상자를 지정하고 차단 사유코드와 차단 범위를 선택한 뒤 승인 프로세스를 거쳐 적용하는 고위험 업무다. FDS, KYT, KYC, 제재국가, 트래블룰 등 자동 차단 이벤트도 동일한 정책 단위로 기록하고 관리한다.",
+    principles: [
+      "차단 등록은 고객 대상자 지정 없이 처리할 수 없으며 회원번호, 계정, 지갑주소, 관련 Case를 함께 연결한다.",
+      "차단 사유는 ADM-RISK-003 차단 사유코드 중 하나를 선택하고 필요 시 세부 사유와 증빙을 첨부한다.",
+      "수동 등록과 자동 등록을 구분하고, 자동 등록은 발생 룰과 탐지 시스템, 원 이벤트 ID를 저장한다.",
+      "등록 요청은 즉시 적용하지 않고 사유, 범위, 증빙, 영향도를 검토한 뒤 승인 완료 시 적용한다.",
+      "차단 등록, 승인, 반려, 보완요청, 적용 실패, 자동 등록 이벤트는 모두 감사로그로 남긴다."
+    ],
+    stages: [
+      { step: "1", name: "대상자 지정", owner: "요청자", policy: "회원번호, 이름/식별자, 계정상태, 지갑주소, 관련 FDS/KYT/KYC Case를 확인하고 단일 또는 복수 대상자를 지정한다." },
+      { step: "2", name: "차단 사유 선택", owner: "요청자", policy: "ADM-RISK-003 사유코드를 선택하고 등록 사유, 증빙, 차단 필요 기간, 긴급 여부를 입력한다." },
+      { step: "3", name: "차단 범위 설정", owner: "요청자", policy: "로그인, 거래, 입금, 출금, 입고, 출고, 전체 차단 중 적용 범위를 선택하고 부분 차단 여부를 기록한다." },
+      { step: "4", name: "결재 요청", owner: "승인자", policy: "고위험 차단은 승인 전 적용을 금지한다. 긴급 차단은 선적용 후 사후승인 정책을 별도로 표시한다." },
+      { step: "5", name: "차단 적용", owner: "시스템", policy: "승인 완료 시 차단 상태를 적용하고 회원 상태, 입출금 제한, FDS/KYT Case와 동기화한다." },
+      { step: "6", name: "로그/통지", owner: "시스템", policy: "요청자, 승인자, 적용 시각, 전후 상태, 사유코드, 관련 증빙, 고객 안내 여부를 기록한다." }
+    ],
+    requirements: [
+      { area: "등록 대상", policy: "회원번호 기반 고객 대상자를 필수로 지정한다. 지갑주소나 거래만 있는 경우에도 연결 회원을 확인하거나 미확인 상태로 별도 Case를 만든다." },
+      { area: "자동 등록", policy: "FDS시스템 차단, KYT Alert, 제재국가 IP, 트래블룰 미준수, KYC 미흡, 미신고 VASP 등은 자동 등록 후보로 수집하고 승인 정책에 따라 적용한다." },
+      { area: "수동 등록", policy: "운영자 수동 등록은 차단 사유, 증빙, 대상 범위, 요청 부서, 만료 예정일을 필수로 입력한다." },
+      { area: "결재/승인", policy: "등록 요청, 긴급 등록, 대량 등록, 차단 범위 확대는 승인 프로세스를 태운다. 승인 전후 값과 반려 사유를 보관한다." },
+      { area: "감사로그", policy: "누가 어떤 대상자를 어떤 사유로 어떤 범위까지 차단했는지 전후 상태와 함께 변경 불가능한 로그로 남긴다." }
+    ]
+  },
+  "ADM-RISK-002": {
+    type: "approvalFlow",
+    title: "차단 해제 승인 정책",
+    summary:
+      "차단 해제는 FDS에 걸린 고객, 수동 차단 등록 대상자, KYC·제재·트래블룰 사유로 제한된 고객의 차단 상태를 검토 후 승인으로 해제하는 업무다. 원 차단 사유와 해제 사유를 함께 확인해야 하며 단순 버튼 처리로 구현하지 않는다.",
+    principles: [
+      "차단 해제는 원 차단 기록이 있는 대상자만 요청할 수 있고 원 차단 사유, 등록자, 승인자, 적용 범위를 함께 보여준다.",
+      "해제 요청은 해제 사유, 증빙, 관련 Case 조치 결과, 고객 안내 여부를 포함해야 한다.",
+      "FDS, KYT, KYC, 제재, 수사기관 요청 등 사유별로 해제 가능 조건과 승인 단계를 분리한다.",
+      "부분 해제, 전체 해제, 보류, 반려, 해제 불가 상태를 명확히 구분한다.",
+      "승인 완료 전에는 차단 상태를 변경하지 않고, 승인 후 시스템 적용 결과와 실패 사유를 기록한다."
+    ],
+    stages: [
+      { step: "1", name: "차단 대상 조회", owner: "요청자", policy: "차단 상태인 회원을 조회하고 원 차단 사유코드, 차단 범위, 차단 등록 경로, 관련 Case를 확인한다." },
+      { step: "2", name: "해제 요청 작성", owner: "요청자", policy: "해제 사유, 조치 결과, 증빙, 해제 범위, 고객 안내 필요 여부를 입력한다." },
+      { step: "3", name: "위험 검토", owner: "승인자", policy: "FDS/KYT Alert, KYC 상태, 제재 여부, 입출금 위험도, 미해결 Case를 확인해 해제 가능 여부를 판단한다." },
+      { step: "4", name: "승인/반려/보류", owner: "승인자", policy: "해제 승인, 반려, 보완요청, 보류, 해제 불가 중 하나로 처리하고 판단 사유를 필수 입력한다." },
+      { step: "5", name: "해제 적용", owner: "시스템", policy: "승인 완료 시 선택한 범위만 해제하고 회원 상태, 입출금 제한, FDS/KYT Case를 동기화한다." },
+      { step: "6", name: "사후 기록", owner: "시스템", policy: "원 차단 사유와 해제 사유, 승인자, 적용 결과, 실패 여부, 고객 통지 이력을 감사로그로 보관한다." }
+    ],
+    requirements: [
+      { area: "해제 대상", policy: "FDS에 걸린 고객, 수동 차단 등록 고객, KYC 미흡 고객, 제재국가·트래블룰·KYT 사유 차단 고객을 해제 대상으로 조회한다." },
+      { area: "원 차단 정보", policy: "원 차단 사유코드, 차단 등록자, 등록 승인자, 등록일, 차단 범위, 증빙, 관련 Case를 해제 화면에서 함께 보여준다." },
+      { area: "해제 범위", policy: "전체 해제와 부분 해제를 구분한다. 출금만 해제, 입금만 해제, 로그인 유지 차단 등 범위별 처리를 지원한다." },
+      { area: "승인 프로세스", policy: "해제는 승인 완료 후 적용한다. 고위험 사유는 2단계 승인 또는 준법 검토를 거치도록 설계한다." },
+      { area: "감사로그", policy: "해제 요청자, 승인자, 해제 사유, 증빙, 전후 제한 상태, 적용 결과, 반려/보류 사유를 보관한다." }
+    ]
+  },
   "ADM-RISK-003": {
+    type: "reasonCode",
     title: "차단 사유코드 정책",
     summary:
       "차단 사유코드는 코인거래소의 가상자산 입출고 기준과 원화거래소의 예치금 입출금 기준을 분리해 관리한다. 사유별 보고 기준과 건 수 산출 기준은 운영 처리, 보고서, 감사로그의 공통 기준으로 사용한다.",
@@ -303,18 +360,29 @@ function buildDevelopmentDirective(row) {
 
 function getSpecialPolicySearchParts(policy) {
   if (!policy) return [];
-  return [
+  const parts = [
     policy.title,
     policy.summary,
     ...policy.principles,
-    ...policy.rows.flatMap((item) => [
+    ...(policy.rows || []).flatMap((item) => [
       item.no,
       item.virtualReason,
       item.virtualCount,
       item.fiatReason,
       item.fiatCount
+    ]),
+    ...(policy.stages || []).flatMap((item) => [
+      item.step,
+      item.name,
+      item.owner,
+      item.policy
+    ]),
+    ...(policy.requirements || []).flatMap((item) => [
+      item.area,
+      item.policy
     ])
-  ].filter(Boolean);
+  ];
+  return parts.filter(Boolean);
 }
 
 function splitList(value, separator) {
@@ -641,6 +709,55 @@ function renderSpecialPolicy(row) {
         )
         .join("")}
     </div>
+    ${renderSpecialPolicyBody(policy)}
+  `;
+}
+
+function renderSpecialPolicyBody(policy) {
+  if (policy.type === "approvalFlow") {
+    return `
+      <div class="workflow-grid">
+        ${policy.stages
+          .map(
+            (item) => `
+              <article class="workflow-card">
+                <div class="workflow-step">${highlight(item.step)}</div>
+                <div>
+                  <h4>${highlight(item.name)}</h4>
+                  <p class="workflow-owner">${highlight(item.owner)}</p>
+                  <p>${highlight(item.policy)}</p>
+                </div>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="table-wrap requirement-table-wrap">
+        <table class="requirement-table">
+          <thead>
+            <tr>
+              <th>정책 영역</th>
+              <th>구현 기준</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${policy.requirements
+              .map(
+                (item) => `
+                  <tr>
+                    <td>${highlight(item.area)}</td>
+                    <td>${highlight(item.policy)}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  return `
     <div class="table-wrap special-table-wrap">
       <table class="special-policy-table">
         <thead>
