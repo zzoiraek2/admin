@@ -215,7 +215,7 @@ function normalizeRows(records) {
     };
 
     normalized.directive = buildDevelopmentDirective(normalized);
-    normalized.searchText = [
+    normalized.searchText = normalizeSearchText([
       normalized.code,
       normalized.top,
       normalized.left1,
@@ -226,10 +226,14 @@ function normalizeRows(records) {
       normalized.directive,
       normalized.status,
       ...normalized.tabs,
-      ...Object.values(suggestion).flat()
+      ...buildDesignOpinionItems(normalized).flat(),
+      ...buildChecklistItems(normalized).flat()
     ]
-      .join(" ")
-      .toLowerCase();
+      .join(" "))
+      .concat(" ", normalizeSearchText([normalized.code, normalized.title].join("")))
+      .concat(" ", normalizeSearchText([normalized.top, normalized.left1, normalized.title].join("")))
+      .concat(" ", normalizeSearchText(normalized.description))
+      .concat(" ", normalizeSearchText(normalized.purpose));
 
     return normalized;
   });
@@ -282,6 +286,7 @@ function setupFilters() {
 
 function render() {
   state.filteredRows = getFilteredRows();
+  syncActiveRowWithSearch();
   setupFilters();
   renderSummary();
   renderNavigation();
@@ -292,12 +297,20 @@ function render() {
 }
 
 function getFilteredRows() {
-  const query = state.query.toLowerCase();
+  const query = normalizeSearchText(state.query);
   return state.rows.filter((row) => {
     const matchesStatus = state.status === "all" || row.status === state.status;
     const matchesQuery = !query || row.searchText.includes(query);
     return matchesStatus && matchesQuery;
   });
+}
+
+function syncActiveRowWithSearch() {
+  if (!state.query) return;
+  const activeStillVisible = state.filteredRows.some((row) => row.id === state.activeId);
+  if (!activeStillVisible) {
+    state.activeId = state.filteredRows[0]?.id || null;
+  }
 }
 
 function renderSummary() {
@@ -351,7 +364,10 @@ function renderNavigation() {
                   .map(
                     (row) => `
                       <button class="nav-leaf ${row.id === state.activeId ? "is-active" : ""}" type="button" data-id="${row.id}">
-                        <span>${highlight(row.code)} · ${highlight(row.title)}</span>
+                        <span class="nav-label">
+                          <span class="nav-title">${highlight(row.title)}</span>
+                          <span class="nav-code">${highlight(row.code)}</span>
+                        </span>
                         <span class="status-chip ${row.status === "준비중" ? "ready" : "defined"}">${row.status}</span>
                       </button>
                     `
@@ -411,7 +427,8 @@ function renderPriorityList() {
       return `
         <div class="priority-item">
           <div>
-            <button type="button" data-id="${row.id}">${highlight(row.code)} · ${highlight(row.title)}</button>
+            <button type="button" data-id="${row.id}">${highlight(row.title)}</button>
+            <div class="small-code">${highlight(row.code)}</div>
             <p>${highlight(row.purpose)}</p>
           </div>
           <span class="priority-chip ${level}">${label}</span>
@@ -504,7 +521,13 @@ function renderMenuGrid() {
 
 function renderDetail() {
   const row = state.rows.find((item) => item.id === state.activeId);
-  if (!row) return;
+  if (!row) {
+    els.detailPanel.hidden = true;
+    if (!state.query) {
+      els.overviewPanel.hidden = false;
+    }
+    return;
+  }
 
   els.overviewPanel.hidden = true;
   els.detailPanel.hidden = false;
@@ -662,20 +685,13 @@ function hasAny(text, words) {
 }
 
 function renderDesignOpinion(row) {
-  const items = [
-    ["사용자/권한", row.suggestion.owner],
-    ["화면 구조", row.suggestion.layout],
-    ["핵심 데이터", row.suggestion.data],
-    ["주요 액션", row.suggestion.actions],
-    ["감사/보안", row.suggestion.audit],
-    ["개발 우선순위", row.suggestion.priority]
-  ];
+  const items = buildDesignOpinionItems(row);
 
   return items
     .map(
       ([title, body]) => `
         <article class="policy-card">
-          <h4>${title}</h4>
+          <h4>${highlight(title)}</h4>
           <p>${highlight(body)}</p>
         </article>
       `
@@ -683,15 +699,19 @@ function renderDesignOpinion(row) {
     .join("");
 }
 
-function renderChecklist(row) {
-  const items = [
-    ["목록 기준", `${row.title} 목록은 상태, 기간, 담당자, 검색어 필터를 기본 제공해야 합니다.`],
-    ["상세 기준", "상세 화면은 현재 값, 처리 이력, 관련 증빙, 연결 화면 링크를 함께 보여줍니다."],
-    ["권한 기준", "조회 권한과 처리 권한을 분리하고 민감 정보는 마스킹 해제를 별도 권한으로 둡니다."],
-    ["처리 기준", `${row.status === "준비중" ? "제작 시" : "정리 시"} 승인/반려/보완요청 같은 변경 액션에는 사유 입력을 요구합니다.`],
-    ["로그 기준", "조회, 다운로드, 상태 변경, 승인 결과는 관리자 감사로그에 남깁니다."],
-    ["운영 기준", "SLA 초과, 실패, 예외 상태는 대시보드와 알림으로 연결합니다."]
+function buildDesignOpinionItems(row) {
+  return [
+    ["사용자/권한", row.suggestion.owner],
+    ["화면 구조", row.suggestion.layout],
+    ["핵심 데이터", row.suggestion.data],
+    ["주요 액션", row.suggestion.actions],
+    ["감사/보안", row.suggestion.audit],
+    ["개발 우선순위", row.suggestion.priority]
   ];
+}
+
+function renderChecklist(row) {
+  const items = buildChecklistItems(row);
 
   return items
     .map(
@@ -699,13 +719,24 @@ function renderChecklist(row) {
         <div class="check-item">
           <i data-lucide="check-circle-2"></i>
           <div>
-            <h4>${title}</h4>
+            <h4>${highlight(title)}</h4>
             <p>${highlight(body)}</p>
           </div>
         </div>
       `
     )
     .join("");
+}
+
+function buildChecklistItems(row) {
+  return [
+    ["목록 기준", `${row.title} 목록은 상태, 기간, 담당자, 검색어 필터를 기본 제공해야 합니다.`],
+    ["상세 기준", "상세 화면은 현재 값, 처리 이력, 관련 증빙, 연결 화면 링크를 함께 보여줍니다."],
+    ["권한 기준", "조회 권한과 처리 권한을 분리하고 민감 정보는 마스킹 해제를 별도 권한으로 둡니다."],
+    ["처리 기준", `${row.status === "준비중" ? "제작 시" : "정리 시"} 승인/반려/보완요청 같은 변경 액션에는 사유 입력을 요구합니다.`],
+    ["로그 기준", "조회, 다운로드, 상태 변경, 승인 결과는 관리자 감사로그에 남깁니다."],
+    ["운영 기준", "SLA 초과, 실패, 예외 상태는 대시보드와 알림으로 연결합니다."]
+  ];
 }
 
 function renderTokens(items, className) {
@@ -763,6 +794,13 @@ function highlight(value) {
   if (!state.query) return safe;
   const escapedQuery = escapeRegExp(state.query);
   return safe.replace(new RegExp(`(${escapedQuery})`, "gi"), "<mark>$1</mark>");
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[^0-9a-z\u3131-\u314e\uac00-\ud7a3]+/g, "");
 }
 
 function escapeHtml(value) {
