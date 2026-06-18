@@ -29,6 +29,55 @@ const menuCodePrefixes = {
   "보안·관리자통제": "ADM-SEC"
 };
 
+const specialPolicies = {
+  "ADM-RISK-003": {
+    title: "차단 사유코드 정책",
+    summary:
+      "차단 사유코드는 코인거래소의 가상자산 입출고 기준과 원화거래소의 예치금 입출금 기준을 분리해 관리한다. 사유별 보고 기준과 건 수 산출 기준은 운영 처리, 보고서, 감사로그의 공통 기준으로 사용한다.",
+    principles: [
+      "사유 번호 1~13은 보고 기준 코드로 관리하고, 동일 번호 안에서도 업무 사유는 복수 행으로 관리한다.",
+      "코인거래소 적용 사유와 원화거래소 적용 사유를 분리하되, 같은 의미의 사유는 동일 번호로 매핑한다.",
+      "건 수 산출 기준은 사건발생일, 가상자산종목수, 이용자수 중 하나를 기본값으로 둔다.",
+      "입금, 출금, 입고, 출고 차단 방향과 적용 범위를 코드 속성으로 관리한다.",
+      "사유코드 생성, 수정, 사용중지, 보고 기준 변경은 승인과 감사로그 대상이다."
+    ],
+    rows: [
+      { no: "1", virtualReason: "가상자산거래를 위한 정보시스템(사업자 자체 플랫폼) 전산장애 또는 보수점검", virtualCount: "사건발생일", fiatReason: "가상자산거래를 위한 정보시스템(사업자 자체 플랫폼) 전산장애 또는 보수점검", fiatCount: "사건발생일" },
+      { no: "1", virtualReason: "가상자산거래를 위한 정보시스템(지갑시스템, 개인지갑업체) 전산장애 또는 보수점검", virtualCount: "사건발생일", fiatReason: "", fiatCount: "" },
+      { no: "1", virtualReason: "", virtualCount: "", fiatReason: "가상자산거래를 위한 정보시스템(입출금서비스제공업체) 전산장애 또는 보수점검", fiatCount: "사건발생일" },
+      { no: "1", virtualReason: "메인넷 업그레이드, 하드포크, 토큰스왑, 리브랜딩 등 가상자산 발행·관리 블록체인 네트워크 전산장애 또는 보수점검", virtualCount: "가상자산종목수", fiatReason: "", fiatCount: "" },
+      { no: "2", virtualReason: "가상자산 거래를 위한 정보통신망(통신사, 서버 등) 전산장애 또는 보수점검", virtualCount: "사건발생일", fiatReason: "가상자산 거래를 위한 정보통신망(통신사, 서버 등) 전산장애 또는 보수점검", fiatCount: "사건발생일" },
+      { no: "2", virtualReason: "2채널 인증수단의 전산장애 또는 보수점검", virtualCount: "사건발생일", fiatReason: "2채널 인증수단의 전산장애 또는 보수점검", fiatCount: "사건발생일" },
+      { no: "3", virtualReason: "", virtualCount: "", fiatReason: "관리기관·실명계정은행 시스템 또는 네트워크의 전산장애 또는 보수점검", fiatCount: "사건발생일" },
+      { no: "3", virtualReason: "", virtualCount: "", fiatReason: "관리기관·실명계정은행 시스템 일일 점검(예시: 매일 11:50~00:10)", fiatCount: "사건발생일" },
+      { no: "4", virtualReason: "거래상대방 가상자산정보시스템 전산장애", virtualCount: "사건발생일", fiatReason: "", fiatCount: "" },
+      { no: "5", virtualReason: "특정 가상자산의 거래지원 종료 절차 진행(입고만 차단)", virtualCount: "가상자산종목수", fiatReason: "", fiatCount: "" },
+      { no: "6", virtualReason: "특정 가상자산 정기 실사", virtualCount: "사건발생일", fiatReason: "", fiatCount: "" },
+      { no: "7", virtualReason: "직권말소, 영업정지명령 이행 또는 폐업(입고차단)", virtualCount: "사건발생일", fiatReason: "직권말소, 영업정지명령 이행 또는 폐업(입금차단)", fiatCount: "사건발생일" },
+      { no: "8", virtualReason: "사업자에 대한 해킹, 전산장애 등 법상 사고 발생", virtualCount: "사건발생일", fiatReason: "사업자에 대한 해킹, 전산장애 등 법상 사고 발생", fiatCount: "사건발생일" },
+      { no: "9", virtualReason: "가상자산 발행재단 해킹 및 전산장애 등", virtualCount: "가상자산종목수", fiatReason: "", fiatCount: "" },
+      { no: "10", virtualReason: "행정기관의 강제집행 및 보전처분 등 요청, 명령", virtualCount: "이용자수", fiatReason: "행정기관의 강제집행 및 보전처분 등 요청, 명령", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "VPN을 통한 출금", virtualCount: "이용자수", fiatReason: "VPN을 통한 출금", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "트래블룰 솔루션(VV, CODE사)의 전산장애 또는 보수점검", virtualCount: "사건발생일", fiatReason: "", fiatCount: "" },
+      { no: "11", virtualReason: "계정도용(해킹) 의심으로 인한 출금대기", virtualCount: "이용자수", fiatReason: "계정도용(해킹) 의심으로 인한 출금대기", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "실제소유주 의심", virtualCount: "이용자수", fiatReason: "실제소유주 의심", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "트래블룰 미준수 의심으로 인한 입고대기", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
+      { no: "11", virtualReason: "고객 사망(상속절차 진행 중)", virtualCount: "이용자수", fiatReason: "고객 사망(상속절차 진행 중)", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "미신고 가상자산 거래소로의 입출고", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
+      { no: "11", virtualReason: "제재국가 IP차단", virtualCount: "이용자수", fiatReason: "제재국가 IP차단", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "제재국가로부터 유입된 자금 관련 거래 차단", virtualCount: "이용자수", fiatReason: "제재국가로부터 유입된 자금 관련 거래 차단", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "체이널리시스 고위험 카테고리 거래 차단", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
+      { no: "11", virtualReason: "확인되지 않은 지갑주소로의 출고", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
+      { no: "11", virtualReason: "KYC 미이행 계정으로의 입고", virtualCount: "이용자수", fiatReason: "KYC 미이행 계정으로의 입금", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "KYC 재이행 만료 등 KYC가 미흡한 회원의 입출고", virtualCount: "이용자수", fiatReason: "KYC 재이행 만료 또는 KYC가 미흡한 회원의 입출금", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "FDS시스템 차단", virtualCount: "이용자수", fiatReason: "FDS시스템 차단", fiatCount: "이용자수" },
+      { no: "11", virtualReason: "요주의인물", virtualCount: "이용자수", fiatReason: "요주의인물", fiatCount: "이용자수" },
+      { no: "12", virtualReason: "24시간 출금지연제 및 72시간 출금지연제 등 전자통신금융사기 예방(출고차단)", virtualCount: "이용자수", fiatReason: "", fiatCount: "" },
+      { no: "13", virtualReason: "범죄행위 예방을 위한 수사기관(검찰, 경찰) 등 요청", virtualCount: "이용자수", fiatReason: "범죄행위 예방을 위한 수사기관(검찰, 경찰) 등 요청", fiatCount: "이용자수" }
+    ]
+  }
+};
+
 const els = {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -61,6 +110,9 @@ function cacheElements() {
     "detailTabs",
     "designOpinion",
     "policyChecklist",
+    "specialPolicyBlock",
+    "specialPolicyTitle",
+    "specialPolicyContent",
     "menuGrid",
     "resultSummary",
     "backToOverview",
@@ -211,7 +263,8 @@ function normalizeRows(records) {
       description: record[columns.description] || "",
       descriptionItems,
       legacy: record[columns.legacy] || "신규 정책 정의",
-      suggestion
+      suggestion,
+      specialPolicy: specialPolicies[code] || null
     };
 
     normalized.directive = buildDevelopmentDirective(normalized);
@@ -227,7 +280,8 @@ function normalizeRows(records) {
       normalized.status,
       ...normalized.tabs,
       ...buildDesignOpinionItems(normalized).flat(),
-      ...buildChecklistItems(normalized).flat()
+      ...buildChecklistItems(normalized).flat(),
+      ...getSpecialPolicySearchParts(normalized.specialPolicy)
     ]
       .join(" "))
       .concat(" ", normalizeSearchText([normalized.code, normalized.title].join("")))
@@ -245,6 +299,22 @@ function getMenuCodePrefix(topMenu) {
 
 function buildDevelopmentDirective(row) {
   return `${row.code} ${row.title} 화면은 이 설계정책서의 화면 목적, 탭 구성, 설계 방식 제안, 권한/감사 기준을 기준으로 개발합니다. 구현 중 설계와 달라지는 항목은 변경 사유와 대체 정책을 기록합니다.`;
+}
+
+function getSpecialPolicySearchParts(policy) {
+  if (!policy) return [];
+  return [
+    policy.title,
+    policy.summary,
+    ...policy.principles,
+    ...policy.rows.flatMap((item) => [
+      item.no,
+      item.virtualReason,
+      item.virtualCount,
+      item.fiatReason,
+      item.fiatCount
+    ])
+  ].filter(Boolean);
 }
 
 function splitList(value, separator) {
@@ -543,6 +613,67 @@ function renderDetail() {
   els.detailTabs.innerHTML = renderTokens(row.tabs.length ? row.tabs : inferTabs(row), "tab-token");
   els.designOpinion.innerHTML = renderDesignOpinion(row);
   els.policyChecklist.innerHTML = renderChecklist(row);
+  renderSpecialPolicy(row);
+}
+
+function renderSpecialPolicy(row) {
+  if (!row.specialPolicy) {
+    els.specialPolicyBlock.hidden = true;
+    els.specialPolicyTitle.textContent = "";
+    els.specialPolicyContent.innerHTML = "";
+    return;
+  }
+
+  const policy = row.specialPolicy;
+  els.specialPolicyBlock.hidden = false;
+  els.specialPolicyTitle.innerHTML = highlight(policy.title);
+  els.specialPolicyContent.innerHTML = `
+    <p class="special-summary">${highlight(policy.summary)}</p>
+    <div class="special-principles">
+      ${policy.principles
+        .map(
+          (item) => `
+            <div class="special-principle">
+              <i data-lucide="check-circle-2"></i>
+              <span>${highlight(item)}</span>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+    <div class="table-wrap special-table-wrap">
+      <table class="special-policy-table">
+        <thead>
+          <tr>
+            <th rowspan="2">차단사유</th>
+            <th colspan="2">코인거래소: 가상자산 입출고 관련</th>
+            <th colspan="2">원화거래소: 예치금 입출금 관련</th>
+          </tr>
+          <tr>
+            <th>사유</th>
+            <th>건 수 산출 기준</th>
+            <th>사유</th>
+            <th>건 수 산출 기준</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${policy.rows
+            .map(
+              (item) => `
+                <tr>
+                  <td class="reason-no">${highlight(item.no)}</td>
+                  <td>${highlight(item.virtualReason || "-")}</td>
+                  <td>${highlight(item.virtualCount || "-")}</td>
+                  <td>${highlight(item.fiatReason || "-")}</td>
+                  <td>${highlight(item.fiatCount || "-")}</td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function selectRow(id) {

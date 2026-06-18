@@ -657,6 +657,71 @@ tr:last-child td {
   color: var(--ok);
 }
 
+.special-summary {
+  margin: 10px 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.special-principles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.special-principle {
+  display: flex;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.special-principle svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.special-table-wrap {
+  max-height: 620px;
+}
+
+.special-policy-table {
+  min-width: 1180px;
+}
+
+.special-policy-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.special-policy-table th[colspan] {
+  text-align: center;
+  color: var(--brand-strong);
+  background: #eef7f6;
+}
+
+.special-policy-table td {
+  font-size: 13px;
+}
+
+.special-policy-table .reason-no {
+  width: 72px;
+  color: var(--brand-strong);
+  font-weight: 900;
+  text-align: center;
+}
+
 .result-summary {
   color: var(--muted);
   font-size: 13px;
@@ -774,7 +839,8 @@ mark {
   .detail-grid,
   .menu-grid,
   .policy-grid,
-  .checklist-grid {
+  .checklist-grid,
+  .special-principles {
     grid-template-columns: 1fr;
   }
 
