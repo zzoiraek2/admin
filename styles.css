@@ -612,6 +612,10 @@ tr:last-child td {
   gap: 12px;
 }
 
+.description-approval-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.78fr);
+}
+
 .info-block {
   margin-top: 12px;
   padding: 16px;
@@ -623,6 +627,29 @@ tr:last-child td {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.approval-process-list {
+  display: grid;
+  gap: 10px;
+}
+
+.approval-process-item {
+  display: grid;
+  gap: 6px;
+}
+
+.approval-process-item p,
+.approval-none {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.approval-tab {
+  width: fit-content;
 }
 
 .token,

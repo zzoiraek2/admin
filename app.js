@@ -263,6 +263,7 @@ function cacheElements() {
     "detailPurpose",
     "detailLegacy",
     "detailDescription",
+    "detailApprovalProcess",
     "detailTabs",
     "tabDetailContent",
     "designOpinion",
@@ -354,6 +355,7 @@ function normalizeMenuDocs(records) {
     const title = record.title || "이름 미정";
     const tabs = Array.isArray(record.tabs) ? record.tabs : splitList(record.tabs, "/");
     const tabDetails = normalizeTabDetails(record.tabDetails, tabs, record);
+    const approvalProcess = normalizeApprovalProcess(record.approvalProcess, tabDetails);
     const description = record.description || "";
     const descriptionItems = splitList(description, ",");
     const status = record.status || "정의됨";
@@ -377,6 +379,7 @@ function normalizeMenuDocs(records) {
       code,
       tabs,
       tabDetails,
+      approvalProcess,
       status,
       purpose: record.purpose || "화면 목적 정의 필요",
       description,
@@ -412,6 +415,7 @@ function buildRowSearchText(row) {
     row.status,
     ...row.tabs,
     ...getTabDetailSearchParts(row.tabDetails),
+    ...getApprovalProcessSearchParts(row.approvalProcess),
     ...buildDesignOpinionItems(row).flat(),
     ...buildChecklistItems(row).flat(),
     ...getSpecialPolicySearchParts(row.specialPolicy)
@@ -498,6 +502,68 @@ function normalizeTabDetails(details, tabs, record) {
   });
 }
 
+function normalizeApprovalProcess(process, tabDetails = []) {
+  if (process && typeof process === "object") {
+    const tabs = Array.isArray(process.tabs)
+      ? process.tabs
+          .map((item) => ({
+            tab: item.tab || item.name || "",
+            process: item.process || item.approval || ""
+          }))
+          .filter((item) => item.tab)
+      : [];
+    return {
+      summary: process.summary || (tabs.length ? tabs.map((item) => item.tab).join(", ") : "해당사항 없음"),
+      tabs
+    };
+  }
+
+  const inferred = inferApprovalProcessFromDetails(tabDetails);
+  return {
+    summary: inferred.length ? inferred.map((item) => item.tab).join(", ") : "해당사항 없음",
+    tabs: inferred
+  };
+}
+
+function inferApprovalProcessFromDetails(tabDetails = []) {
+  const positivePatterns = [
+    /결재\s*상신/,
+    /상신/,
+    /승인\s*(완료|흐름|대상|후|자|선|로그)/,
+    /승인자/,
+    /반려/,
+    /예외\s*(승인|인정|처리)/,
+    /2단계\s*승인/,
+    /준법\s*검토/,
+    /정책\s*변경/,
+    /상태\s*변경/,
+    /차단/,
+    /해제/,
+    /보정/,
+    /확정/,
+    /파기/,
+    /지급/,
+    /회수/,
+    /게시/,
+    /반영/
+  ];
+  const nonActionOnly = /^(조회|모니터링).*결재 없이/;
+
+  return tabDetails
+    .filter((detail) => {
+      const approval = detail.approval || "";
+      const explicitlyNoApproval = /(결재상신 대상이 아니다|결재상신이 없다|승인 액션이 아니다|직접 수행하지 않는다)/.test(approval);
+      const hasApprovalAction = /(승인 대상|승인 흐름|승인 완료|승인자|승인 후|2단계 승인|준법 검토|반려|예외 승인|상신(?! 대상이 아니다))/.test(approval);
+      return positivePatterns.some((pattern) => pattern.test(approval))
+        && !(nonActionOnly.test(approval) && !/(상태 변경|차단|해제|보정|확정|파기|지급|회수|게시|반영|예외|수동|정책 변경)/.test(approval))
+        && !(explicitlyNoApproval && !hasApprovalAction);
+    })
+    .map((detail) => ({
+      tab: detail.name,
+      process: detail.approval
+    }));
+}
+
 function buildFallbackTabDetail(tabName, record) {
   const title = record.title || "해당 메뉴";
   return {
@@ -525,6 +591,14 @@ function getTabDetailSearchParts(details) {
     item.links,
     item.audit
   ]).filter(Boolean);
+}
+
+function getApprovalProcessSearchParts(process) {
+  if (!process) return [];
+  return [
+    process.summary,
+    ...(process.tabs || []).flatMap((item) => [item.tab, item.process])
+  ].filter(Boolean);
 }
 
 function setupFilters() {
@@ -804,6 +878,7 @@ function renderDetail() {
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
+  els.detailApprovalProcess.innerHTML = renderApprovalProcess(row.approvalProcess);
   renderTabDetails(row);
   els.designOpinion.innerHTML = renderDesignOpinion(row);
   els.policyChecklist.innerHTML = renderChecklist(row);
@@ -831,6 +906,28 @@ function renderTabDetails(row) {
     )
     .join("");
   els.tabDetailContent.innerHTML = activeDetail ? renderTabDetailPanel(activeDetail) : "";
+}
+
+function renderApprovalProcess(process) {
+  const entries = process?.tabs || [];
+  if (!entries.length) {
+    return `<p class="approval-none">${highlight(process?.summary || "해당사항 없음")}</p>`;
+  }
+
+  return `
+    <div class="approval-process-list">
+      ${entries
+        .map(
+          (entry) => `
+            <article class="approval-process-item">
+              <span class="token approval-tab">${highlight(entry.tab)}</span>
+              <p>${highlight(entry.process || "결재 프로세스 상세 정의 필요")}</p>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function renderTabDetailPanel(detail) {

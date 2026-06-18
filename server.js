@@ -105,6 +105,7 @@ function parseMenuDoc(filePath, number = 0) {
   const code = info["메뉴 코드"] || titleMatch?.[1] || fileCode;
   const title = info["좌측 2메뉴"] || titleMatch?.[2] || code;
   const description = readSection(text, "업무 설명");
+  const tabDetails = readTabDetailSection(text, "탭별 상세 설계");
 
   return {
     id: `menu-${number || code}`,
@@ -119,7 +120,8 @@ function parseMenuDoc(filePath, number = 0) {
     purpose: readSection(text, "화면 목적") || "화면 목적 정의 필요",
     description,
     tabs: readBulletSection(text, "탭 구성"),
-    tabDetails: readTabDetailSection(text, "탭별 상세 설계"),
+    tabDetails,
+    approvalProcess: readApprovalProcessSection(text, "결재 프로세스", tabDetails),
     docPath: `./docs/menus/${code}.md`
   };
 }
@@ -180,6 +182,98 @@ function readBulletSection(text, heading) {
     .split(/\r?\n/)
     .map((line) => line.match(/^-\s+(.+)$/)?.[1]?.trim())
     .filter(Boolean);
+}
+
+function readApprovalProcessSection(text, heading, tabDetails = []) {
+  const section = readSection(text, heading);
+  const lines = section
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const entries = [];
+  for (const line of lines) {
+    const bullet = line.match(/^-\s+(.+)$/)?.[1]?.trim();
+    if (!bullet || bullet === "해당사항 없음") continue;
+
+    const [tabName, ...rest] = bullet.split(":");
+    if (rest.length) {
+      entries.push({
+        tab: tabName.trim(),
+        process: rest.join(":").trim()
+      });
+    } else {
+      entries.push({
+        tab: bullet,
+        process: ""
+      });
+    }
+  }
+
+  if (entries.length) {
+    return {
+      summary: entries.map((entry) => entry.tab).join(", "),
+      tabs: entries
+    };
+  }
+
+  const inferred = inferApprovalProcess(tabDetails);
+  if (inferred.length) {
+    return {
+      summary: inferred.map((entry) => entry.tab).join(", "),
+      tabs: inferred
+    };
+  }
+
+  return {
+    summary: "해당사항 없음",
+    tabs: []
+  };
+}
+
+function inferApprovalProcess(tabDetails = []) {
+  const positivePatterns = [
+    /결재\s*상신/,
+    /상신/,
+    /승인\s*(완료|흐름|대상|후|자|선|로그)/,
+    /승인자/,
+    /반려/,
+    /예외\s*(승인|인정|처리)/,
+    /2단계\s*승인/,
+    /준법\s*검토/,
+    /정책\s*변경/,
+    /상태\s*변경/,
+    /차단/,
+    /해제/,
+    /보정/,
+    /확정/,
+    /파기/,
+    /지급/,
+    /회수/,
+    /게시/,
+    /반영/
+  ];
+  const negativeOnlyPatterns = [
+    /^조회.*결재 없이/,
+    /직접 수행하지 않는다/,
+    /승인 액션이 아니다/,
+    /수정할 수 없/
+  ];
+
+  return tabDetails
+    .filter((detail) => {
+      const approval = detail.approval || "";
+      const hasPositive = positivePatterns.some((pattern) => pattern.test(approval));
+      const explicitlyNoApproval = /(결재상신 대상이 아니다|결재상신이 없다|승인 액션이 아니다|직접 수행하지 않는다)/.test(approval);
+      const hasApprovalAction = /(승인 대상|승인 흐름|승인 완료|승인자|승인 후|2단계 승인|준법 검토|반려|예외 승인|상신(?! 대상이 아니다))/.test(approval);
+      const isNegativeOnly = negativeOnlyPatterns.some((pattern) => pattern.test(approval))
+        && !/(상태 변경|차단|해제|보정|확정|파기|지급|회수|게시|반영|예외|수동|정책 변경)/.test(approval);
+      return hasPositive && !isNegativeOnly && !(explicitlyNoApproval && !hasApprovalAction);
+    })
+    .map((detail) => ({
+      tab: detail.name,
+      process: detail.approval
+    }));
 }
 
 function readTabDetailSection(text, heading) {
