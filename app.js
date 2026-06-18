@@ -2,6 +2,7 @@ const state = {
   rows: [],
   filteredRows: [],
   activeId: null,
+  activeTabName: null,
   query: "",
   status: "all",
   canEdit: false,
@@ -263,6 +264,7 @@ function cacheElements() {
     "detailLegacy",
     "detailDescription",
     "detailTabs",
+    "tabDetailContent",
     "designOpinion",
     "policyChecklist",
     "specialPolicyBlock",
@@ -285,6 +287,13 @@ function bindEvents() {
 
   els.backToOverview.addEventListener("click", showOverview);
   els.detailStatusSelect.addEventListener("change", updateActiveStatus);
+  els.detailTabs.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tab-name]");
+    if (!button) return;
+    state.activeTabName = button.dataset.tabName;
+    renderDetail();
+    refreshIcons();
+  });
   els.showAllButton.addEventListener("click", () => {
     state.query = "";
     state.status = "all";
@@ -344,6 +353,7 @@ function normalizeMenuDocs(records) {
     const code = record.code || `ADM-GEN-${String(index + 1).padStart(3, "0")}`;
     const title = record.title || "이름 미정";
     const tabs = Array.isArray(record.tabs) ? record.tabs : splitList(record.tabs, "/");
+    const tabDetails = normalizeTabDetails(record.tabDetails, tabs, record);
     const description = record.description || "";
     const descriptionItems = splitList(description, ",");
     const status = record.status || "정의됨";
@@ -366,6 +376,7 @@ function normalizeMenuDocs(records) {
       title: title || "이름 미정",
       code,
       tabs,
+      tabDetails,
       status,
       purpose: record.purpose || "화면 목적 정의 필요",
       description,
@@ -400,6 +411,7 @@ function buildRowSearchText(row) {
     row.docPath,
     row.status,
     ...row.tabs,
+    ...getTabDetailSearchParts(row.tabDetails),
     ...buildDesignOpinionItems(row).flat(),
     ...buildChecklistItems(row).flat(),
     ...getSpecialPolicySearchParts(row.specialPolicy)
@@ -475,6 +487,44 @@ function splitList(value, separator) {
 
 function cleanReadyText(value) {
   return String(value || "").replace(/\(준비중\)/g, "").trim();
+}
+
+function normalizeTabDetails(details, tabs, record) {
+  const source = Array.isArray(details) ? details : [];
+  const byName = new Map(source.map((item) => [item.name, item]));
+  return tabs.map((tabName) => {
+    const detail = byName.get(tabName);
+    return detail || buildFallbackTabDetail(tabName, record);
+  });
+}
+
+function buildFallbackTabDetail(tabName, record) {
+  const title = record.title || "해당 메뉴";
+  return {
+    name: tabName,
+    purpose: `${title} 화면에서 ${tabName} 관점으로 운영자가 상태를 판단하고 후속 업무로 이동할 수 있게 한다.`,
+    search: "기간, 상태, 담당자, 회원번호/대상 식별자, 관련 Case 번호",
+    columns: "대상 식별자, 상태, 주요 값, 담당자, 생성일시, 최근 변경일시, 처리 결과",
+    detail: "현재 상태, 원천 데이터, 관련 증빙, 처리 이력, 변경 전후 값, 연계 화면 링크",
+    actions: "조회, 필터 저장, 상세 열람, 담당자 배정, 메모 등록, 관련 화면 이동",
+    approval: "상태 변경, 제한 적용, 데이터 보정, 대량 처리, 외부 제출은 결재 상신 후 실행한다.",
+    links: "회원 기본조회, 입출금/거래 이력, 준법/FDS Case, 고객상담, 감사로그",
+    audit: "조회 사유, 마스킹 해제, 다운로드, 변경 요청, 승인/반려, 실행 결과를 감사로그로 남긴다."
+  };
+}
+
+function getTabDetailSearchParts(details) {
+  return (details || []).flatMap((item) => [
+    item.name,
+    item.purpose,
+    item.search,
+    item.columns,
+    item.detail,
+    item.actions,
+    item.approval,
+    item.links,
+    item.audit
+  ]).filter(Boolean);
 }
 
 function setupFilters() {
@@ -754,10 +804,69 @@ function renderDetail() {
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
-  els.detailTabs.innerHTML = renderTokens(row.tabs.length ? row.tabs : inferTabs(row), "tab-token");
+  renderTabDetails(row);
   els.designOpinion.innerHTML = renderDesignOpinion(row);
   els.policyChecklist.innerHTML = renderChecklist(row);
   renderSpecialPolicy(row);
+}
+
+function renderTabDetails(row) {
+  const tabs = row.tabs.length ? row.tabs : inferTabs(row);
+  const tabDetails = row.tabDetails && row.tabDetails.length
+    ? row.tabDetails
+    : normalizeTabDetails([], tabs, row);
+  const activeTab = tabDetails.some((item) => item.name === state.activeTabName)
+    ? state.activeTabName
+    : tabDetails[0]?.name;
+  const activeDetail = tabDetails.find((item) => item.name === activeTab) || tabDetails[0];
+
+  state.activeTabName = activeTab || null;
+  els.detailTabs.innerHTML = tabDetails
+    .map(
+      (item) => `
+        <button class="tab-button ${item.name === activeTab ? "is-active" : ""}" type="button" data-tab-name="${escapeHtml(item.name)}">
+          ${highlight(item.name)}
+        </button>
+      `
+    )
+    .join("");
+  els.tabDetailContent.innerHTML = activeDetail ? renderTabDetailPanel(activeDetail) : "";
+}
+
+function renderTabDetailPanel(detail) {
+  const cards = [
+    ["업무 목적", detail.purpose],
+    ["검색 조건", detail.search],
+    ["목록 컬럼", detail.columns],
+    ["상세보기 정보", detail.detail],
+    ["주요 기능", detail.actions],
+    ["결재/승인", detail.approval],
+    ["연계 메뉴", detail.links],
+    ["권한/감사", detail.audit]
+  ];
+
+  return `
+    <article class="tab-detail-panel">
+      <div class="tab-detail-heading">
+        <div>
+          <p class="eyebrow">Selected tab policy</p>
+          <h4>${highlight(detail.name)}</h4>
+        </div>
+      </div>
+      <div class="tab-detail-grid">
+        ${cards
+          .map(
+            ([title, body]) => `
+              <section class="tab-detail-card">
+                <h5>${highlight(title)}</h5>
+                <p>${highlight(body || "정의 필요")}</p>
+              </section>
+            `
+          )
+          .join("")}
+      </div>
+    </article>
+  `;
 }
 
 function renderSpecialPolicy(row) {
@@ -986,12 +1095,14 @@ function renderLedgerTab(tab) {
 
 function selectRow(id) {
   state.activeId = id;
+  state.activeTabName = null;
   render();
   scrollDetailIntoView();
 }
 
 function showOverview() {
   state.activeId = null;
+  state.activeTabName = null;
   els.detailPanel.hidden = true;
   els.overviewPanel.hidden = false;
   renderNavigation();

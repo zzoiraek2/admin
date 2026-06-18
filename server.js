@@ -119,6 +119,7 @@ function parseMenuDoc(filePath, number = 0) {
     purpose: readSection(text, "화면 목적") || "화면 목적 정의 필요",
     description,
     tabs: readBulletSection(text, "탭 구성"),
+    tabDetails: readTabDetailSection(text, "탭별 상세 설계"),
     docPath: `./docs/menus/${code}.md`
   };
 }
@@ -179,6 +180,42 @@ function readBulletSection(text, heading) {
     .split(/\r?\n/)
     .map((line) => line.match(/^-\s+(.+)$/)?.[1]?.trim())
     .filter(Boolean);
+}
+
+function readTabDetailSection(text, heading) {
+  const section = readSection(text, heading);
+  if (!section) return [];
+
+  const keyMap = {
+    "업무 목적": "purpose",
+    "검색 조건": "search",
+    "목록 컬럼": "columns",
+    "상세보기 정보": "detail",
+    "주요 기능": "actions",
+    "결재/승인": "approval",
+    "연계 메뉴": "links",
+    "권한/감사": "audit"
+  };
+  const details = [];
+  let current = null;
+
+  for (const rawLine of section.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    const headingMatch = line.match(/^###\s+(.+)$/);
+    if (headingMatch) {
+      current = { name: headingMatch[1].trim() };
+      details.push(current);
+      continue;
+    }
+
+    const bulletMatch = line.match(/^-\s*([^:]+):\s*(.*)$/);
+    if (current && bulletMatch) {
+      const key = keyMap[bulletMatch[1].trim()] || bulletMatch[1].trim();
+      current[key] = bulletMatch[2].trim();
+    }
+  }
+
+  return details;
 }
 
 function replaceStatusLine(text, status) {

@@ -646,6 +646,80 @@ tr:last-child td {
   background: #e0f2fe;
 }
 
+.tab-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  color: #075985;
+  background: #e0f2fe;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.tab-button:hover {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.tab-button.is-active {
+  border-color: #0f766e;
+  color: #064e3b;
+  background: #d1fae5;
+}
+
+.tab-detail-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+}
+
+.tab-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab-detail-heading h4 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.tab-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tab-detail-card {
+  min-height: 116px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.tab-detail-card h5 {
+  margin: 0 0 7px;
+  color: var(--brand-strong);
+  font-size: 13px;
+}
+
+.tab-detail-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .policy-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 10px;
@@ -1036,9 +1110,10 @@ mark {
   .two-column,
   .detail-grid,
   .menu-grid,
-  .policy-grid,
-  .checklist-grid,
-  .special-principles,
+    .policy-grid,
+    .checklist-grid,
+    .tab-detail-grid,
+    .special-principles,
   .workflow-grid,
   .ledger-tabs,
   .ledger-grid {
