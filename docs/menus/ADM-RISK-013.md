@@ -19,11 +19,11 @@ No, VASP명, Cluster Name, Site, Status, 내부 비고
 
 ## 탭 구성
 
-- VASP목록
-- Cluster
-- Site
-- Status
-- 내부비고
+- VASP 요약
+- 식별정보 관리
+- 검증·위험상태
+- 차단목록 반영
+- 승인·변경 이력
 
 ## 설계 방식 제안
 
