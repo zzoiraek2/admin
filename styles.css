@@ -754,6 +754,68 @@ tr:last-child td {
   margin-top: 14px;
 }
 
+.ledger-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ledger-tab-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+}
+
+.ledger-tab-header {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ledger-tab-header h4 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+
+.ledger-tab-header p,
+.ledger-tab-section p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ledger-tab-section {
+  margin-top: 12px;
+}
+
+.ledger-tab-section h5 {
+  margin: 0 0 8px;
+  color: var(--brand-strong);
+  font-size: 13px;
+}
+
+.ledger-policy-list {
+  display: grid;
+  gap: 7px;
+}
+
+.ledger-policy-item {
+  display: flex;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ledger-policy-item svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
 .ledger-section h4 {
   margin: 0 0 10px;
   font-size: 15px;
@@ -946,6 +1008,7 @@ mark {
   .checklist-grid,
   .special-principles,
   .workflow-grid,
+  .ledger-tabs,
   .ledger-grid {
     grid-template-columns: 1fr;
   }

@@ -161,24 +161,73 @@ const specialPolicies = {
       { basis: "전체", display: "전체", example: "거래지원 종료로 전체 고객 입고차단", rule: "개별 이용자 로그가 없더라도 전체 대상 차단으로 표시하고 근거 사건을 연결한다." },
       { basis: "금액", display: "금액 합계", example: "2605월(5,495,691원)", rule: "출고 차단 대상 가상자산 금액과 출금 차단 대상 예치금 금액을 별도 합산한다." }
     ],
-    views: [
-      { name: "원천 로그", policy: "차단일자, 사유코드, 대상 유형, 회원/주소/자산/서비스, 차단 방향, 금액, 자동/수동 구분, Case ID를 조회한다." },
-      { name: "일별 집계", policy: "차단일자와 사유코드 기준으로 가상자산 입고/출고/입출고, 예치금 입금/출금/입출금 차단 값을 산출한다." },
-      { name: "월별 집계", policy: "일별 집계를 월 단위로 묶고 산출 기준에 따라 숫자는 합계, 날짜는 목록, 전체는 전체, 종목은 종목수로 표시한다." },
-      { name: "보고 공문", policy: "최초 보고일자, 최초보고 문서번호, 차단사유 근거를 집계 행에 연결한다." },
-      { name: "수동 등록/보정", policy: "유의종목 지정, 점검, 서비스 중지, 법정 요청 등 로그로 자동 산출되지 않는 대장 행을 승인 기반으로 등록한다." }
-    ],
-    reportColumns: [
-      "차단사유",
-      "건수/보고값",
-      "가상자산 종목수: 입고만·출고만·입출고 모두 차단",
-      "가상자산 입출고 차단 이용자수: 입고차단·출고차단·입출고 모두 차단",
-      "가상자산 출고 차단 대상 금액",
-      "예치금 차단 이용자수: 입금만·출금만·입출금 모두 차단",
-      "출금 차단 대상 예치금 금액",
-      "최초 보고일자",
-      "최초보고 문서번호",
-      "차단사유 근거"
+    tabs: [
+      {
+        name: "차단 관리대장",
+        purpose: "사유코드별 일별·월별 집계와 보고값을 조회하는 탭이다. 기간 검색, 전월 기준 조회, 사유코드별 집계표, 최초 보고 근거를 한 화면에서 확인한다.",
+        controls: [
+          "기간검색: 차단일자 또는 보고 기준일 기준",
+          "전월기준: 조회월의 전월 말 또는 전월 전체 기간 기준",
+          "집계 단위: 일별, 월별",
+          "차단사유: 1~13 사유코드",
+          "대상 구분: 가상자산, 예치금, 전체",
+          "차단 방향: 입금, 출금, 입고, 출고, 입출금/입출고 모두"
+        ],
+        columns: [
+          "차단사유",
+          "건수/보고값",
+          "가상자산 종목수: 입고만·출고만·입출고 모두 차단",
+          "가상자산 입출고 차단 이용자수: 입고차단·출고차단·입출고 모두 차단",
+          "가상자산 출고 차단 대상 금액",
+          "예치금 차단 이용자수: 입금만·출금만·입출금 모두 차단",
+          "출금 차단 대상 예치금 금액",
+          "최초 보고일자",
+          "최초보고 문서번호",
+          "차단사유 근거"
+        ],
+        policies: [
+          "이용자수 기준은 숫자 합계로 표시하고 회원 중복 제거 기준을 명확히 한다.",
+          "사건발생일 기준은 건수 숫자가 아니라 날짜 목록 또는 발생일 수로 표시한다.",
+          "가상자산종목수 기준은 종목 수 또는 종목 목록을 표시하고 전체 대상이면 전체로 표시한다.",
+          "월별 집계는 일별 집계를 사유코드별로 합산하되 날짜형 보고값은 날짜 목록으로 유지한다.",
+          "집계값은 원천 로그와 수동 보정 이력을 추적할 수 있어야 한다."
+        ]
+      },
+      {
+        name: "원천 로그",
+        purpose: "차단 행위와 사건 기록이 발생한 원천 행 단위 누적현황을 조회하는 탭이다. 관리대장 집계값의 산출 근거로 사용한다.",
+        controls: [
+          "기간검색: 차단일시, 통지일시, 재개(예정)일 기준",
+          "전월기준: 전월 발생/유효 차단 로그 조회",
+          "차단사유 검색",
+          "차단대상 검색",
+          "입출금 차단 구분 검색",
+          "통지방법 검색",
+          "재개 여부 검색"
+        ],
+        columns: [
+          "순번",
+          "차단대상",
+          "입출금 차단 구분",
+          "차단 사유",
+          "차단대상 종목수",
+          "가상자산 종목",
+          "가상자산 종목명",
+          "차단대상 이용자수",
+          "통지방법",
+          "차단일시",
+          "통지일시",
+          "재개(예정)일",
+          "비고"
+        ],
+        policies: [
+          "KYC, KYT, FDS 등 자동 로그는 발생 시점마다 사유코드와 함께 누적한다.",
+          "블랙리스트 지갑, 법정 동결, 수사 협조 등 수동 등록형 원천도 승인 완료 후 누적한다.",
+          "정기점검, 장애, 유의종목 지정 같은 사건 기록형은 차단 적용 로그와 구분해 누적한다.",
+          "원천 로그는 집계값의 근거이므로 삭제하지 않고 정정은 보정 이력으로 남긴다.",
+          "재개(예정)일이 있으면 해제 또는 재개 예정 상태로 집계에 반영한다."
+        ]
+      }
     ]
   }
 };
@@ -443,6 +492,13 @@ function getSpecialPolicySearchParts(policy) {
     ...(policy.views || []).flatMap((item) => [
       item.name,
       item.policy
+    ]),
+    ...(policy.tabs || []).flatMap((item) => [
+      item.name,
+      item.purpose,
+      ...(item.controls || []),
+      ...(item.columns || []),
+      ...(item.policies || [])
     ]),
     ...(policy.reportColumns || [])
   ];
@@ -823,21 +879,8 @@ function renderSpecialPolicyBody(policy) {
 
   if (policy.type === "ledger") {
     return `
-      <div class="ledger-section">
-        <h4>원천 데이터 유형</h4>
-        <div class="ledger-grid">
-          ${policy.sourceTypes
-            .map(
-              (item) => `
-                <article class="ledger-card">
-                  <h5>${highlight(item.type)}</h5>
-                  <p class="ledger-source">${highlight(item.source)}</p>
-                  <p>${highlight(item.ledgerRule)}</p>
-                </article>
-              `
-            )
-            .join("")}
-        </div>
+      <div class="ledger-tabs">
+        ${policy.tabs.map((tab) => renderLedgerTab(tab)).join("")}
       </div>
       <div class="table-wrap requirement-table-wrap">
         <table class="requirement-table">
@@ -860,30 +903,25 @@ function renderSpecialPolicyBody(policy) {
                     <td>${highlight(item.rule)}</td>
                   </tr>
                 `
-              )
+            )
               .join("")}
           </tbody>
         </table>
       </div>
       <div class="ledger-section">
-        <h4>화면 탭/조회 기준</h4>
+        <h4>원천 데이터 유형</h4>
         <div class="ledger-grid">
-          ${policy.views
+          ${policy.sourceTypes
             .map(
               (item) => `
                 <article class="ledger-card compact">
-                  <h5>${highlight(item.name)}</h5>
-                  <p>${highlight(item.policy)}</p>
+                  <h5>${highlight(item.type)}</h5>
+                  <p class="ledger-source">${highlight(item.source)}</p>
+                  <p>${highlight(item.ledgerRule)}</p>
                 </article>
               `
             )
             .join("")}
-        </div>
-      </div>
-      <div class="ledger-section">
-        <h4>집계표 필수 컬럼</h4>
-        <div class="token-list">
-          ${policy.reportColumns.map((item) => `<span class="token">${highlight(item)}</span>`).join("")}
         </div>
       </div>
     `;
@@ -922,6 +960,44 @@ function renderSpecialPolicyBody(policy) {
         </tbody>
       </table>
     </div>
+  `;
+}
+
+function renderLedgerTab(tab) {
+  return `
+    <article class="ledger-tab-card">
+      <div class="ledger-tab-header">
+        <h4>${highlight(tab.name)}</h4>
+        <p>${highlight(tab.purpose)}</p>
+      </div>
+      <div class="ledger-tab-section">
+        <h5>검색/조회 조건</h5>
+        <div class="token-list">
+          ${tab.controls.map((item) => `<span class="token">${highlight(item)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="ledger-tab-section">
+        <h5>표시 컬럼</h5>
+        <div class="token-list">
+          ${tab.columns.map((item) => `<span class="token">${highlight(item)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="ledger-tab-section">
+        <h5>집계/운영 정책</h5>
+        <div class="ledger-policy-list">
+          ${tab.policies
+            .map(
+              (item) => `
+                <div class="ledger-policy-item">
+                  <i data-lucide="check-circle-2"></i>
+                  <span>${highlight(item)}</span>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      </div>
+    </article>
   `;
 }
 
