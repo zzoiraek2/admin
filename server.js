@@ -191,6 +191,13 @@ function readApprovalProcessSection(text, heading, tabDetails = []) {
     .map((line) => line.trim())
     .filter(Boolean);
 
+  if (lines.some((line) => /^-\s+해당사항 없음\s*$/.test(line))) {
+    return {
+      summary: "해당사항 없음",
+      tabs: []
+    };
+  }
+
   const entries = [];
   for (const line of lines) {
     const bullet = line.match(/^-\s+(.+)$/)?.[1]?.trim();

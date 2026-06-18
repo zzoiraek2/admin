@@ -40,6 +40,10 @@ function hasApprovalProcess(detail) {
 }
 
 function renderApprovalProcess(menu) {
+  if (menu.code === "ADM-WAL-013") {
+    return ["## 결재 프로세스", "", "- 해당사항 없음", ""];
+  }
+
   const entries = (menu.tabDetails || []).filter(hasApprovalProcess);
   const lines = ["## 결재 프로세스", ""];
 
