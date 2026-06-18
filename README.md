@@ -16,6 +16,14 @@
 
 상태 저장 기능은 로컬 관리 서버가 필요합니다.
 
+Windows에서는 아래 파일을 더블클릭하거나 터미널에서 실행합니다.
+
+```bat
+start-admin-server.cmd
+```
+
+직접 실행하려면:
+
 ```bash
 npm start
 ```
