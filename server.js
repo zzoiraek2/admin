@@ -9,6 +9,17 @@ const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "127.0.0.1";
 
 const validStatuses = new Set(["정의됨", "준비중", "검토중"]);
+const topMenuOrder = [
+  "대시보드",
+  "회원·고객확인",
+  "거래·마켓 관리",
+  "입출금·지갑",
+  "준법·FDS 관리",
+  "거래지원·상품",
+  "정산·회계",
+  "고객지원·서비스",
+  "보안·관리자통제"
+];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -52,8 +63,13 @@ function listMenus() {
   return fs
     .readdirSync(menusDir)
     .filter((fileName) => fileName.endsWith(".md"))
-    .sort((a, b) => a.localeCompare(b))
-    .map((fileName, index) => parseMenuDoc(path.join(menusDir, fileName), index + 1));
+    .map((fileName) => parseMenuDoc(path.join(menusDir, fileName)))
+    .sort(compareMenus)
+    .map((menu, index) => ({
+      ...menu,
+      id: `menu-${index + 1}`,
+      number: index + 1
+    }));
 }
 
 function updateMenuStatus(code, status) {
@@ -102,6 +118,26 @@ function parseMenuDoc(filePath, number = 0) {
     tabs: readBulletSection(text, "탭 구성"),
     docPath: `./docs/menus/${code}.md`
   };
+}
+
+function compareMenus(a, b) {
+  const topDiff = getTopMenuOrder(a.top) - getTopMenuOrder(b.top);
+  if (topDiff) return topDiff;
+
+  const codeDiff = getCodeNumber(a.code) - getCodeNumber(b.code);
+  if (codeDiff) return codeDiff;
+
+  return a.code.localeCompare(b.code);
+}
+
+function getTopMenuOrder(topMenu) {
+  const index = topMenuOrder.indexOf(topMenu);
+  return index === -1 ? topMenuOrder.length : index;
+}
+
+function getCodeNumber(code) {
+  const match = code.match(/-(\d{3})$/);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 function parseInfoSection(text) {
