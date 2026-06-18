@@ -1,0 +1,4 @@
+.chrome-test/
+*.log
+*.png
+*.tmp
