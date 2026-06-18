@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin 설계정책서</title>
-    <link rel="stylesheet" href="./styles.css?v=20260618-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260618-2" />
     <script src="./vendor/lucide.min.js?v=20260618-1"></script>
-    <script src="./app.js?v=20260618-1" defer></script>
+    <script src="./app.js?v=20260618-2" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -70,6 +70,18 @@
             </div>
             <span class="status-chip" id="detailStatus"></span>
           </div>
+
+          <section class="reference-block">
+            <div>
+              <p class="block-label">개발 참조 코드</p>
+              <code id="detailCode"></code>
+            </div>
+            <p id="detailDirective"></p>
+            <button class="text-button" id="copyDirective" type="button">
+              <i data-lucide="copy"></i>
+              지침 복사
+            </button>
+          </section>
 
           <div class="detail-grid">
             <section class="info-block">

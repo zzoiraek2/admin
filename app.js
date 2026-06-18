@@ -17,6 +17,18 @@ const columns = {
   legacy: "구 어드민 매핑"
 };
 
+const menuCodePrefixes = {
+  "대시보드": "ADM-DASH",
+  "회원·고객확인": "ADM-MEM",
+  "거래·마켓 관리": "ADM-MKT",
+  "입출금·지갑": "ADM-WAL",
+  "준법·FDS 관리": "ADM-RISK",
+  "거래지원·상품": "ADM-LIST",
+  "정산·회계": "ADM-SETTLE",
+  "고객지원·서비스": "ADM-CS",
+  "보안·관리자통제": "ADM-SEC"
+};
+
 const els = {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -40,6 +52,9 @@ function cacheElements() {
     "detailBreadcrumb",
     "detailTitle",
     "detailStatus",
+    "detailCode",
+    "detailDirective",
+    "copyDirective",
     "detailPurpose",
     "detailLegacy",
     "detailDescription",
@@ -62,6 +77,7 @@ function bindEvents() {
   });
 
   els.backToOverview.addEventListener("click", showOverview);
+  els.copyDirective.addEventListener("click", copyActiveDirective);
   els.showAllButton.addEventListener("click", () => {
     state.query = "";
     state.status = "all";
@@ -156,6 +172,7 @@ function normalizeRows(records) {
   let currentTop = "";
   let currentLeft1 = "";
   let currentLeft2 = "";
+  const sequenceByPrefix = {};
 
   return records.map((record, index) => {
     if (record[columns.top]) currentTop = record[columns.top];
@@ -167,6 +184,9 @@ function normalizeRows(records) {
     const status = record[columns.status] === "준비중" || rawTitle.includes("준비중") ? "준비중" : "정의됨";
     const tabs = splitList(record[columns.tabs], "/");
     const descriptionItems = splitList(record[columns.description], ",");
+    const prefix = getMenuCodePrefix(currentTop);
+    sequenceByPrefix[prefix] = (sequenceByPrefix[prefix] || 0) + 1;
+    const code = `${prefix}-${String(sequenceByPrefix[prefix]).padStart(3, "0")}`;
     const suggestion = buildSuggestion({
       title,
       top: currentTop,
@@ -184,6 +204,7 @@ function normalizeRows(records) {
       left1: currentLeft1 || "미분류",
       left2: title || "이름 미정",
       title: title || "이름 미정",
+      code,
       tabs,
       status,
       purpose: record[columns.purpose] || "화면 목적 정의 필요",
@@ -193,13 +214,16 @@ function normalizeRows(records) {
       suggestion
     };
 
+    normalized.directive = buildDevelopmentDirective(normalized);
     normalized.searchText = [
+      normalized.code,
       normalized.top,
       normalized.left1,
       normalized.left2,
       normalized.purpose,
       normalized.description,
       normalized.legacy,
+      normalized.directive,
       normalized.status,
       ...normalized.tabs,
       ...Object.values(suggestion).flat()
@@ -209,6 +233,14 @@ function normalizeRows(records) {
 
     return normalized;
   });
+}
+
+function getMenuCodePrefix(topMenu) {
+  return menuCodePrefixes[topMenu] || "ADM-GEN";
+}
+
+function buildDevelopmentDirective(row) {
+  return `${row.code} ${row.title} 화면은 이 설계정책서의 화면 목적, 탭 구성, 설계 방식 제안, 권한/감사 기준을 기준으로 개발합니다. 구현 중 설계와 달라지는 항목은 변경 사유와 대체 정책을 기록합니다.`;
 }
 
 function splitList(value, separator) {
@@ -319,7 +351,7 @@ function renderNavigation() {
                   .map(
                     (row) => `
                       <button class="nav-leaf ${row.id === state.activeId ? "is-active" : ""}" type="button" data-id="${row.id}">
-                        <span>${highlight(row.title)}</span>
+                        <span>${highlight(row.code)} · ${highlight(row.title)}</span>
                         <span class="status-chip ${row.status === "준비중" ? "ready" : "defined"}">${row.status}</span>
                       </button>
                     `
@@ -379,7 +411,7 @@ function renderPriorityList() {
       return `
         <div class="priority-item">
           <div>
-            <button type="button" data-id="${row.id}">${highlight(row.title)}</button>
+            <button type="button" data-id="${row.id}">${highlight(row.code)} · ${highlight(row.title)}</button>
             <p>${highlight(row.purpose)}</p>
           </div>
           <span class="priority-chip ${level}">${label}</span>
@@ -444,6 +476,9 @@ function renderMenuGrid() {
             <h3>${highlight(row.title)}</h3>
             <span class="status-chip ${row.status === "준비중" ? "ready" : "defined"}">${row.status}</span>
           </div>
+          <div class="menu-code-row">
+            <span class="code-chip">${highlight(row.code)}</span>
+          </div>
           <div class="path">${highlight(row.top)} / ${highlight(row.left1)}</div>
           <p>${highlight(row.purpose)}</p>
           <div class="meta-row">
@@ -477,6 +512,8 @@ function renderDetail() {
   els.detailTitle.innerHTML = highlight(row.title);
   els.detailStatus.textContent = row.status;
   els.detailStatus.className = `status-chip ${row.status === "준비중" ? "ready" : "defined"}`;
+  els.detailCode.innerHTML = highlight(row.code);
+  els.detailDirective.innerHTML = highlight(row.directive);
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
@@ -498,6 +535,24 @@ function showOverview() {
   renderNavigation();
   refreshIcons();
   els.overviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function copyActiveDirective() {
+  const row = state.rows.find((item) => item.id === state.activeId);
+  if (!row) return;
+
+  const original = els.copyDirective.innerHTML;
+  try {
+    await navigator.clipboard.writeText(row.directive);
+    els.copyDirective.innerHTML = '<i data-lucide="check"></i>복사됨';
+  } catch (error) {
+    els.copyDirective.innerHTML = '<i data-lucide="alert-circle"></i>복사 실패';
+  }
+  refreshIcons();
+  window.setTimeout(() => {
+    els.copyDirective.innerHTML = original;
+    refreshIcons();
+  }, 1400);
 }
 
 function buildSuggestion(context) {

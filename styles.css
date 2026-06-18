@@ -333,6 +333,25 @@ button svg {
   background: #d1fae5;
 }
 
+.code-chip,
+#detailCode {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #0f172a;
+  background: #e2e8f0;
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
 .priority-chip.high {
   color: #7f1d1d;
   background: #fee2e2;
@@ -506,6 +525,24 @@ tr:last-child td {
   font-weight: 800;
 }
 
+.reference-block {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfb;
+}
+
+.reference-block p:not(.block-label) {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
@@ -625,6 +662,10 @@ tr:last-child td {
   font-weight: 900;
 }
 
+.menu-code-row {
+  margin-bottom: 8px;
+}
+
 .menu-card .meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -710,5 +751,9 @@ mark {
   .detail-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .reference-block {
+    grid-template-columns: 1fr;
   }
 }
