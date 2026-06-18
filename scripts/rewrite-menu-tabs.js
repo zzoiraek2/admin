@@ -35,6 +35,12 @@ function tabsFor(menu) {
   if (menu.code === "ADM-WAL-013") {
     return ["지갑 요약", "잔고·상태 모니터링", "웜월렛·지갑 세팅"];
   }
+  if (menu.code === "ADM-WAL-015") {
+    return ["비율 요약", "자산별 비율 현황", "가상자산별 관리비율 설정", "비율 알림·자동조정", "조정 이력"];
+  }
+  if (menu.code === "ADM-SETTLE-014") {
+    return ["종가", "경제적가치"];
+  }
 
   if (menu.top === "대시보드") {
     if (hasAny(text, ["승인", "처리 대기", "완료 이력"])) return ["처리 대기 요약", "업무별 상세", "승인·반려", "처리 이력"];

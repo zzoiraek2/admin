@@ -40,7 +40,7 @@ function hasApprovalProcess(detail) {
 }
 
 function renderApprovalProcess(menu) {
-  if (menu.code === "ADM-WAL-013") {
+  if (menu.code === "ADM-WAL-013" || menu.code === "ADM-SETTLE-014") {
     return ["## 결재 프로세스", "", "- 해당사항 없음", ""];
   }
 
