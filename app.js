@@ -1,12 +1,9 @@
-const statusStorageKey = "adminPolicyStatusOverrides";
-
 const state = {
   rows: [],
   filteredRows: [],
   activeId: null,
   query: "",
-  status: "all",
-  statusOverrides: readStatusOverrides()
+  status: "all"
 };
 
 
@@ -280,9 +277,9 @@ function cacheElements() {
     "detailBreadcrumb",
     "detailTitle",
     "detailStatus",
-    "detailStatusSelect",
     "detailCode",
     "detailDirective",
+    "detailDocLink",
     "copyDirective",
     "detailPurpose",
     "detailLegacy",
@@ -310,7 +307,6 @@ function bindEvents() {
 
   els.backToOverview.addEventListener("click", showOverview);
   els.copyDirective.addEventListener("click", copyActiveDirective);
-  els.detailStatusSelect.addEventListener("change", updateActiveStatus);
   els.showAllButton.addEventListener("click", () => {
     state.query = "";
     state.status = "all";
@@ -419,7 +415,7 @@ function normalizeRows(records) {
     const descriptionItems = splitList(record[columns.description], ",");
     const prefix = getMenuCodePrefix(currentTop);
     const code = getNextMenuCode(prefix, sequenceByPrefix);
-    const status = state.statusOverrides[code] || baseStatus;
+    const status = baseStatus;
     const suggestion = buildSuggestion({
       title,
       top: currentTop,
@@ -445,6 +441,7 @@ function normalizeRows(records) {
       descriptionItems,
       legacy: record[columns.legacy] || "신규 정책 정의",
       suggestion,
+      docPath: `./docs/menus/${code}.md`,
       specialPolicy: specialPolicies[code] || null
     };
 
@@ -481,6 +478,7 @@ function buildRowSearchText(row) {
     row.description,
     row.legacy,
     row.directive,
+    row.docPath,
     row.status,
     ...row.tabs,
     ...buildDesignOpinionItems(row).flat(),
@@ -843,9 +841,10 @@ function renderDetail() {
   els.detailTitle.innerHTML = highlight(row.title);
   els.detailStatus.textContent = row.status;
   els.detailStatus.className = `status-chip ${getStatusClass(row.status)}`;
-  els.detailStatusSelect.value = row.status;
   els.detailCode.innerHTML = highlight(row.code);
   els.detailDirective.innerHTML = highlight(row.directive);
+  els.detailDocLink.href = row.docPath;
+  els.detailDocLink.title = `${row.code} Markdown policy document`;
   els.detailPurpose.innerHTML = highlight(row.purpose);
   els.detailLegacy.innerHTML = highlight(row.legacy);
   els.detailDescription.innerHTML = renderTokens(row.descriptionItems.length ? row.descriptionItems : ["설명 보강 필요"], "token");
@@ -1094,37 +1093,10 @@ function showOverview() {
   els.overviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function updateActiveStatus() {
-  const row = state.rows.find((item) => item.id === state.activeId);
-  if (!row) return;
-
-  state.statusOverrides[row.code] = els.detailStatusSelect.value;
-  writeStatusOverrides(state.statusOverrides);
-  row.status = els.detailStatusSelect.value;
-  row.searchText = buildRowSearchText(row);
-  render();
-}
-
 function getStatusClass(status) {
   if (status === "준비중") return "ready";
   if (status === "검토중") return "review";
   return "defined";
-}
-
-function readStatusOverrides() {
-  try {
-    return JSON.parse(localStorage.getItem(statusStorageKey) || "{}");
-  } catch (error) {
-    return {};
-  }
-}
-
-function writeStatusOverrides(overrides) {
-  try {
-    localStorage.setItem(statusStorageKey, JSON.stringify(overrides));
-  } catch (error) {
-    // Ignore storage failures in private or restricted browser contexts.
-  }
 }
 
 async function copyActiveDirective() {

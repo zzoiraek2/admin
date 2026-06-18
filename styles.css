@@ -579,28 +579,6 @@ tr:last-child td {
   background: #f8fbfb;
 }
 
-.status-edit {
-  display: inline-grid;
-  gap: 4px;
-  min-width: 116px;
-}
-
-.status-edit span {
-  color: var(--brand-strong);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.status-edit select {
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 800;
-}
-
 .reference-block p:not(.block-label) {
   color: var(--muted);
   font-size: 13px;
